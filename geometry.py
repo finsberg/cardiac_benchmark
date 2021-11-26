@@ -402,7 +402,7 @@ class EllipsoidGeometry:
         save_geometry(fname=fname, geo=self)
 
     def __repr__(self):
-        return f"{self.__class__.__name__}({self.mesh_parameters}, {self.fiber_parameters})"
+        return f"{self.__class__.__name__}()"
 
     @staticmethod
     def default_mesh_parameters():
