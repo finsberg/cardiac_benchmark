@@ -1,0 +1,12 @@
+name: cardiac-benchmark
+channels:
+  - default
+  - conda-forge
+dependencies:
+  - python
+  - pip
+  - numpy
+  - fenics==2019.1.0
+  - python-gmsh
+  - meshio
+  - h5py
