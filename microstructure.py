@@ -1,8 +1,10 @@
-from typing import Dict, Tuple, Union
-
-import numpy as np
-import dolfin
 from collections import namedtuple
+from typing import Dict
+from typing import Tuple
+from typing import Union
+
+import dolfin
+import numpy as np
 
 
 Microstructure = namedtuple("Microstructure", "f0, s0, n0")
@@ -19,7 +21,9 @@ def check_fiber_params(fiber_params: Dict[str, Union[str, float]]) -> None:
 
 
 def laplace(
-    mesh: dolfin.Mesh, ffun: dolfin.MeshFunction, markers: Dict[str, Tuple[int, int]]
+    mesh: dolfin.Mesh,
+    ffun: dolfin.MeshFunction,
+    markers: Dict[str, Tuple[int, int]],
 ):
 
     endo_marker = markers["ENDO"][0]
@@ -94,7 +98,7 @@ def compute_system(
             drl_dt * np.cos(mu),
             drs_dt * np.sin(mu) * np.cos(theta),
             drs_dt * np.sin(mu) * np.sin(theta),
-        ]
+        ],
     )
     e_t = normalize(e_t)
 
@@ -103,7 +107,7 @@ def compute_system(
             -rl * np.sin(mu),
             rs * np.cos(mu) * np.cos(theta),
             rs * np.cos(mu) * np.sin(theta),
-        ]
+        ],
     )
     e_mu = normalize(e_mu)
 
@@ -112,7 +116,7 @@ def compute_system(
             np.zeros_like(t),
             -rs * np.sin(mu) * np.sin(theta),
             rs * np.sin(mu) * np.cos(theta),
-        ]
+        ],
     )
     e_theta = normalize(e_theta)
 

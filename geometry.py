@@ -1,10 +1,13 @@
-from typing import Optional, Dict, Tuple
+import math
+from collections import namedtuple
+from pathlib import Path
+from typing import Dict
+from typing import Optional
+from typing import Tuple
+
+import dolfin
 import gmsh
 import meshio
-import math
-import dolfin
-from pathlib import Path
-from collections import namedtuple
 from dolfin import FiniteElement
 from dolfin import tetrahedron
 from dolfin import VectorElement
@@ -19,7 +22,8 @@ except ImportError:
 from microstructure import create_microstructure
 
 GmshGeometry = namedtuple(
-    "GmshGeometry", ["mesh", "cfun", "ffun", "efun", "vfun", "markers"]
+    "GmshGeometry",
+    ["mesh", "cfun", "ffun", "efun", "vfun", "markers"],
 )
 
 
@@ -262,15 +266,19 @@ def save_geometry(fname, geo: "EllipsoidGeometry") -> None:
     if fname.is_file():
         fname.unlink()
 
-    with dolfin.HDF5File(geo.mesh.mpi_comm(), fname.as_posix(), "w") as h5file:
+    mpi_comm = dolfin.MPI.comm_world
+    if geo.mesh is not None:
+        mpi_comm = geo.mesh.mpi_comm()
+    with dolfin.HDF5File(mpi_comm, fname.as_posix(), "w") as h5file:
         for attr in ["mesh", "cfun", "ffun", "efun", "vfun", "f0", "s0", "n0"]:
             obj = getattr(geo, attr, None)
             if obj is None:
                 continue
 
             h5file.write(obj, attr)
-        for name, (marker, dim) in geo.markers.items():
-            h5file.attributes("mesh")[name] = f"{marker}_{dim}"
+        if geo.markers is not None:
+            for name, (marker, dim) in geo.markers.items():
+                h5file.attributes("mesh")[name] = f"{marker}_{dim}"
 
 
 def load_geometry(fname) -> "EllipsoidGeometry":
@@ -281,7 +289,8 @@ def load_geometry(fname) -> "EllipsoidGeometry":
     mesh = dolfin.Mesh()
     # Defaulf element and markers
     element = VectorElement(
-        FiniteElement("Lagrange", tetrahedron, 1, quad_scheme="default"), dim=3
+        FiniteElement("Lagrange", tetrahedron, 1, quad_scheme="default"),
+        dim=3,
     )
     markers = default_markers()
     if has_h5py:
@@ -409,6 +418,7 @@ class EllipsoidGeometry:
             mu_base_epi=-math.acos(5 / 20),
         )
 
+    @staticmethod
     def default_fiber_parameters():
         return dict(
             function_space="CG_1",
