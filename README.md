@@ -13,6 +13,15 @@ Activate the enviroment
 conda activate cardiac-benchmark
 ```
 
+### For developers
+
+Developers should also install the pre-commit hook
+
+```
+python -m pip install pre-commit
+pre-commit install
+```
+
 ## Running the benchmark
 
 ```
