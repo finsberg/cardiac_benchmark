@@ -6,6 +6,8 @@ dependencies:
   - python
   - pip
   - numpy
+  - scipy
+  - matplotlib
   - fenics==2019.1.0
   - python-gmsh
   - meshio
