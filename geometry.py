@@ -7,17 +7,11 @@ from typing import Tuple
 
 import dolfin
 import gmsh
+import h5py
 import meshio
-from dolfin import FiniteElement
-from dolfin import tetrahedron
-from dolfin import VectorElement
-
-try:
-    import h5py
-
-    has_h5py = True
-except ImportError:
-    has_h5py = False
+from dolfin import FiniteElement  # noqa: F401
+from dolfin import tetrahedron  # noqa: F401
+from dolfin import VectorElement  # noqa: F401
 
 from microstructure import create_microstructure
 
@@ -113,19 +107,6 @@ def gmsh2dolfin(msh_file):
         cfun=cfun,
         markers=markers,
     )
-
-
-def default_markers():
-    return {
-        "ENDOPT": [1, 0],
-        "EPIPT": [2, 0],
-        "EPIRING": [3, 1],
-        "ENDORING": [4, 1],
-        "BASE": [5, 2],
-        "ENDO": [6, 2],
-        "EPI": [7, 2],
-        "MYOCARDIUM": [8, 3],
-    }
 
 
 def create_benchmark_ellipsoid_mesh_gmsh(
@@ -287,19 +268,14 @@ def load_geometry(fname) -> "EllipsoidGeometry":
         raise FileNotFoundError(f"File {fname} does not exist")
 
     mesh = dolfin.Mesh()
-    # Defaulf element and markers
-    element = VectorElement(
-        FiniteElement("Lagrange", tetrahedron, 1, quad_scheme="default"),
-        dim=3,
-    )
-    markers = default_markers()
-    if has_h5py:
-        if mesh.mpi_comm().rank == 0:
-            with h5py.File(fname, "r") as h5file:
-                element = eval(h5file["f0"].attrs["signature"])
-                markers = {}
-                for k, v in h5file["mesh"].attrs.items():
-                    markers[k] = list(map(int, v.decode().split("_")))
+
+    if mesh.mpi_comm().rank == 0:
+        with h5py.File(fname, "r") as h5file:
+            element = eval(h5file["f0"].attrs["signature"])
+            markers: Dict[str, Tuple[int, int]] = {}
+            for k, v in h5file["mesh"].attrs.items():
+                v_split = v.decode().split("_")
+                markers[k] = (int(v_split[0]), int(v_split[1]))
 
     with dolfin.HDF5File(mesh.mpi_comm(), fname.as_posix(), "r") as h5file:
         h5file.read(mesh, "mesh", False)
@@ -350,7 +326,7 @@ class EllipsoidGeometry:
         ffun: Optional[dolfin.MeshFunction] = None,
         efun: Optional[dolfin.MeshFunction] = None,
         vfun: Optional[dolfin.MeshFunction] = None,
-        markers: Dict[str, Tuple[int, int]] = None,
+        markers: Optional[Dict[str, Tuple[int, int]]] = None,
         f0: Optional[dolfin.Function] = None,
         s0: Optional[dolfin.Function] = None,
         n0: Optional[dolfin.Function] = None,

@@ -3,15 +3,15 @@ import typing
 import dolfin
 import ufl
 
+from geometry import EllipsoidGeometry
+from material import HolzapfelOgden
+
 
 class Problem:
     """
+    Class for the mehcanics problem
 
-
-    Time integration
-    ----------------
-
-    We emplot the generalized :math:`alpha`-method
+    For time integration we employ the generalized :math:`alpha`-method
 
     .. rubric:: Reference
 
@@ -24,11 +24,26 @@ class Problem:
 
     def __init__(
         self,
-        geometry,
-        material,
-        parameters=None,
-        function_space="P_1",
+        geometry: EllipsoidGeometry,
+        material: HolzapfelOgden,
+        parameters: typing.Dict[str, dolfin.Constant] = None,
+        function_space: str = "P_1",
     ) -> None:
+        """Constructor
+
+        Parameters
+        ----------
+        geometry : EllipsoidGeometry
+            The geometry
+        material : HolzapfelOgden
+            The material
+        parameters : typing.Dict[str, dolfin.Constant], optional
+            Problem parameters, by default None. See
+            `Problem.default_parmaeters`
+        function_space : str, optional
+            A string of the form `"{family}_{degree}` representing
+            the function space for the displacement, by default "P_1"
+        """
         self.geometry = geometry
         self.material = material
 
@@ -40,6 +55,7 @@ class Problem:
         self._init_forms()
 
     def _init_spaces(self):
+        """Initialize function spaces"""
         mesh = self.geometry.mesh
 
         family, degree = self._function_space.split("_")
@@ -138,6 +154,7 @@ class Problem:
         self.u_old.vector()[:] = self.u.vector()
 
     def _init_forms(self) -> None:
+        """Initialize ufl forms"""
         u = self.u
         v = self.v()
         a = self.a()
@@ -152,7 +169,9 @@ class Problem:
         N = dolfin.FacetNormal(self.geometry.mesh)
         n = ufl.cofac(F) * N
 
-        # Makers
+        # Markers
+        if self.geometry.markers is None:
+            raise RuntimeError("Missing markers in geometry")
         endo = self.geometry.markers["ENDO"][0]
         epi = self.geometry.markers["EPI"][0]
         top = self.geometry.markers["BASE"][0]
@@ -162,15 +181,17 @@ class Problem:
         external_work = (
             dolfin.inner(self.parameters["rho"] * a, w) * dolfin.dx
             - dolfin.inner(w, self.parameters["p"] * n) * ds(endo)
-            + dolfin.inner(
-                (self.parameters["alpha_epi"] * u + self.parameters["beta_epi"] * v),
-                w,
+            + (
+                dolfin.inner(self.parameters["alpha_epi"] * u, N)
+                + dolfin.inner(self.parameters["beta_epi"] * v, N)
             )
+            * dolfin.inner(w, N)
             * ds(epi)
-            + dolfin.inner(
-                (self.parameters["alpha_top"] * u + self.parameters["beta_top"] * v),
-                w,
+            + (
+                dolfin.inner(self.parameters["alpha_top"] * u, N)
+                + dolfin.inner(self.parameters["beta_top"] * v, N)
             )
+            * dolfin.inner(w, N)
             * ds(top)
         )
 
@@ -205,12 +226,14 @@ class Problem:
 
     @property
     def _gamma(self) -> dolfin.Constant:
+        """Parmameter in the generalized alpha-method"""
         return dolfin.Constant(
             0.5 + self.parameters["alpha_f"] - self.parameters["alpha_m"],
         )
 
     @property
     def _beta(self) -> dolfin.Constant:
+        """Parmameter in the generalized alpha-method"""
         return dolfin.Constant((self._gamma + 0.5) ** 2 / 4.0)
 
     def solve(self) -> None:

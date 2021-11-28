@@ -2,11 +2,14 @@ import math
 from pathlib import Path
 
 import dolfin
+import matplotlib.pyplot as plt
 import numpy as np
 import scipy.integrate
 
 from geometry import EllipsoidGeometry
 from material import HolzapfelOgden
+from postprocess import DataCollector
+from postprocess import DataLoader
 from problem import Problem
 
 
@@ -49,7 +52,31 @@ def plot_activation_function():
     ax.set_title("Activation fuction \u03C4(t)")
     ax.set_ylabel("Pressure [Pa]")
     ax.set_xlabel("Time [s]")
-    plt.show()
+    fig.savefig("activation_function.png")
+
+
+def plot_componentwise_displacement(loader: DataLoader):
+
+    p0 = (0.025, 0.03, 0)
+    up0 = loader.deformation_at_point(p0)
+
+    p1 = (0, 0.03, 0)
+    up1 = loader.deformation_at_point(p1)
+
+    fig, ax = plt.subplots(2, 1, sharex=True)
+    ax[0].plot(loader.time_stamps, up0[:, 0], label="x")
+    ax[0].plot(loader.time_stamps, up0[:, 1], label="y")
+    ax[0].plot(loader.time_stamps, up0[:, 2], label="z")
+    ax[0].legend()
+    ax[0].set_ylabel("$u(p_0)$[m]")
+
+    ax[1].plot(loader.time_stamps, up1[:, 0], label="x")
+    ax[1].plot(loader.time_stamps, up1[:, 1], label="y")
+    ax[1].plot(loader.time_stamps, up1[:, 2], label="z")
+    ax[1].legend()
+    ax[1].set_ylabel("$u(p_1)$[m]")
+    ax[1].set_xlabel("Time [s]")
+    fig.savefig("componentwise_displacement.png")
 
 
 def main():
@@ -70,14 +97,24 @@ def main():
     problem.parameters["dt"].assign(dt)
     problem.solve()
 
-    u_file = dolfin.XDMFFile(geo.mesh.mpi_comm(), "u.xdmf")
+    result_filepath = Path("results.h5")
+    collector = DataCollector(result_filepath, u=problem.u)
 
     for t, a in zip(time, act):
-        dolfin.info(f"Solveing for time {t:.2f}")
+        dolfin.info(f"Solveing for time {t:.3f} with tau = {a}")
         tau.assign(a)
         problem.solve()
-        u_file.write(problem.u, t)
+        collector.store(t)
+
+
+def postprocess():
+
+    loader = DataLoader("results.h5")
+    loader.to_xdmf("u.xdmf")
+
+    plot_componentwise_displacement(loader)
 
 
 if __name__ == "__main__":
     main()
+    postprocess()
