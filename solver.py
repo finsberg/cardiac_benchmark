@@ -137,9 +137,4 @@ class NonlinearSolver:
         if num_iterations > 0:
             print(f"Resiudal      : {residuals[-1]}")
 
-        # Don't understand why we need to do this, but it seems like
-        # the snes solver converges even though the last residual
-        # is above the absolute tolerance?
-        converged = residuals[-1] < self.parameters["absolute_tolerance"]
-
-        return num_iterations, converged
+        return num_iterations, self._snes.converged
