@@ -5,6 +5,8 @@ import ufl
 
 from geometry import EllipsoidGeometry
 from material import HolzapfelOgden
+from solver import NonlinearProblem
+from solver import NonlinearSolver
 
 
 class Problem:
@@ -28,6 +30,7 @@ class Problem:
         material: HolzapfelOgden,
         parameters: typing.Optional[typing.Dict[str, dolfin.Constant]] = None,
         function_space: str = "P_1",
+        solver_parameters=None,
     ) -> None:
         """Constructor
 
@@ -52,6 +55,9 @@ class Problem:
         self.parameters.update(parameters)
         self._function_space = function_space
 
+        self.solver_parameters = NonlinearSolver.default_solver_parameters()
+        if solver_parameters is not None:
+            self.solver_parameters.update(**solver_parameters)
         self._init_spaces()
         self._init_forms()
 
@@ -165,7 +171,9 @@ class Problem:
 
         F = dolfin.variable(dolfin.grad(u) + dolfin.Identity(3))
         J = dolfin.det(F)
-        F_dot = dolfin.grad((u - self.u_old) / self.parameters["dt"])
+        F_dot = dolfin.grad(
+            (u - self.u_old) / self.parameters["dt"],
+        )  # FIXME: Is this correct?
 
         # Normal vectors
         N = dolfin.FacetNormal(self.geometry.mesh)
@@ -212,6 +220,17 @@ class Problem:
             dolfin.TrialFunction(self.u_space),
         )
 
+        self._problem = NonlinearProblem(
+            J=self._jacobian,
+            F=self._virtual_work,
+            bcs=[],
+        )
+        self.solver = NonlinearSolver(
+            self._problem,
+            self.u,
+            parameters=self.solver_parameters,
+        )
+
     @staticmethod
     def default_parameters() -> typing.Dict[str, dolfin.Constant]:
         return dict(
@@ -239,20 +258,14 @@ class Problem:
         return dolfin.Constant((self._gamma + 0.5) ** 2 / 4.0)
 
     def solve(self) -> bool:
-        """The the system"""
-        # TODO: Implement a more sophisticated solver?
-        try:
-            dolfin.solve(
-                self._virtual_work == 0,
-                self.u,
-                bcs=[],
-                J=self._jacobian,
-                solver_parameters={"newton_solver": {"linear_solver": "superlu_dist"}},
-            )
-        except RuntimeError:
+        """Solve the system"""
+
+        _, conv = self.solver.solve()
+
+        if not conv:
             self.u.assign(self.u_old)
             self._init_forms()
             return False
-        else:
-            self._update_fields()
-            return True
+
+        self._update_fields()
+        return True

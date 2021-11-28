@@ -130,7 +130,11 @@ def main():
 
     material = HolzapfelOgden(f0=geo.f0, s0=geo.s0, tau=tau)
 
-    problem = Problem(geometry=geo, material=material)
+    problem = Problem(
+        geometry=geo,
+        material=material,
+        solver_parameters={"verbose": True},
+    )
     problem.parameters["dt"].assign(dt)
     problem.solve()
 
