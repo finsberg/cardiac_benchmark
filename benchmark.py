@@ -43,10 +43,9 @@ def activation_function(
     return (res.t, res.y.squeeze())
 
 
-def plot_activation_function():
+def plot_activation_function(t):
     import matplotlib.pyplot as plt
 
-    t = np.linspace(0, 1, 200)
     fig, ax = plt.subplots()
     ax.plot(*activation_function(t_span=(0, 1), t_eval=t))
     ax.set_title("Activation fuction \u03C4(t)")
@@ -79,6 +78,43 @@ def plot_componentwise_displacement(loader: DataLoader):
     fig.savefig("componentwise_displacement.png")
 
 
+def solve(problem, tau, act, time, collector):
+
+    dt = float(problem.parameters["dt"])
+
+    for t, a in zip(time, act):
+        dolfin.info(f"Solving for time {t:.3f} with tau = {a}")
+
+        converged = False
+        target_tau = a
+        prev_tau = float(tau)
+        num_crash = 0
+
+        if not math.isclose(float(tau), target_tau):
+            problem.parameters["dt"].assign(dt)
+            while not converged and not math.isclose(float(tau), target_tau):
+                print(f"Try a = {a}")
+                tau.assign(a)
+
+                converged = problem.solve()
+
+                if converged:
+                    num_crash = 0
+                    prev_tau = a
+                    a = target_tau
+
+                else:
+                    a = prev_tau + (a - prev_tau) / 2
+                    tau.assign(a)
+                    problem.parameters["dt"].assign(problem.parameters["dt"] * 0.5)
+                    num_crash += 1
+
+                if num_crash > 10:
+                    raise RuntimeError
+
+        collector.store(t)
+
+
 def main():
     path = Path("geometry.h5")
     if not path.is_file():
@@ -89,6 +125,7 @@ def main():
     tau = dolfin.Constant(0.0)
     dt = 0.001
     time = np.arange(0, 1, dt)
+    plot_activation_function(t=time)
     _, act = activation_function((0, 1), t_eval=time)
 
     material = HolzapfelOgden(f0=geo.f0, s0=geo.s0, tau=tau)
@@ -100,11 +137,7 @@ def main():
     result_filepath = Path("results.h5")
     collector = DataCollector(result_filepath, u=problem.u)
 
-    for t, a in zip(time, act):
-        dolfin.info(f"Solveing for time {t:.3f} with tau = {a}")
-        tau.assign(a)
-        problem.solve()
-        collector.store(t)
+    solve(problem, tau, act, time, collector)
 
 
 def postprocess():

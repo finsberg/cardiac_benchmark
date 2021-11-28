@@ -26,7 +26,7 @@ class Problem:
         self,
         geometry: EllipsoidGeometry,
         material: HolzapfelOgden,
-        parameters: typing.Dict[str, dolfin.Constant] = None,
+        parameters: typing.Optional[typing.Dict[str, dolfin.Constant]] = None,
         function_space: str = "P_1",
     ) -> None:
         """Constructor
@@ -51,6 +51,7 @@ class Problem:
         self.parameters = Problem.default_parameters()
         self.parameters.update(parameters)
         self._function_space = function_space
+
         self._init_spaces()
         self._init_forms()
 
@@ -237,8 +238,21 @@ class Problem:
         """Parmameter in the generalized alpha-method"""
         return dolfin.Constant((self._gamma + 0.5) ** 2 / 4.0)
 
-    def solve(self) -> None:
+    def solve(self) -> bool:
         """The the system"""
-        # FIXME: Implement a more sophisticated solver
-        dolfin.solve(self._virtual_work == 0, self.u, [])
-        self._update_fields()
+        # TODO: Implement a more sophisticated solver?
+        try:
+            dolfin.solve(
+                self._virtual_work == 0,
+                self.u,
+                bcs=[],
+                J=self._jacobian,
+                solver_parameters={"newton_solver": {"linear_solver": "superlu_dist"}},
+            )
+        except RuntimeError:
+            self.u.assign(self.u_old)
+            self._init_forms()
+            return False
+        else:
+            self._update_fields()
+            return True
