@@ -1,34 +1,6 @@
-import math
+import typing
 
 import dolfin
-import numpy as np
-import scipy.integrate
-
-
-def activation_function(
-    t_span,
-    t_eval=None,
-    t_sys=0.17,
-    t_dias=0.484,
-    gamma=0.005,
-    a_max=5.0,
-    a_min=-30.0,
-    sigma_0=1e5,
-):
-
-    f = (
-        lambda t: 0.25
-        * (1 + math.tanh((t - t_sys) / gamma))
-        * (1 - math.tanh((t - t_dias) / gamma))
-    )
-    a = lambda t: a_max * f(t) + a_min * (1 - f(t))
-
-    def rhs(t, tau):
-        return -abs(a(t)) * tau + sigma_0 * max(a(t), 0)
-
-    res = scipy.integrate.solve_ivp(rhs, t_span, [0.0], t_eval=t_eval)
-
-    return (res.t, res.y.squeeze())
 
 
 def subplus(x):
@@ -85,7 +57,13 @@ class HolzapfelOgden:
     Mathematical, Physical and Engineering Sciences 367.1902 (2009): 3445-3475.
     """
 
-    def __init__(self, f0, s0, parameters=None) -> None:
+    def __init__(
+        self,
+        f0: dolfin.Function,
+        s0: dolfin.Function,
+        tau: dolfin.Constant = dolfin.Constant(0.0),
+        parameters: typing.Optional[typing.Dict[str, dolfin.Constant]] = None,
+    ) -> None:
 
         parameters = parameters or {}
         self.parameters = HolzapfelOgden.default_parameters()
@@ -93,25 +71,26 @@ class HolzapfelOgden:
 
         self.f0 = f0
         self.s0 = s0
+        self.tau = tau
 
     @staticmethod
-    def default_parameters():
+    def default_parameters() -> typing.Dict[str, dolfin.Constant]:
         """
         Default matereial parameter for the Holzapfel Ogden model
         Taken from Table 1 row 3 of [1]
         """
 
         return {
-            "a": 59.0,
-            "b": 8.023,
-            "a_f": 18472.0,
-            "b_f": 16.026,
-            "a_s": 2481.0,
-            "b_s": 11.120,
-            "a_fs": 216.0,
-            "b_fs": 11.436,
-            "kappa": 1e6,
-            "tau": 0.0,
+            "a": dolfin.Constant(59.0),
+            "b": dolfin.Constant(8.023),
+            "a_f": dolfin.Constant(18472.0),
+            "b_f": dolfin.Constant(16.026),
+            "a_s": dolfin.Constant(2481.0),
+            "b_s": dolfin.Constant(11.120),
+            "a_fs": dolfin.Constant(216.0),
+            "b_fs": dolfin.Constant(11.436),
+            "kappa": dolfin.Constant(1e6),
+            "eta": dolfin.Constant(1e2),
         }
 
     def W_1(self, I1, diff=0, *args, **kwargs):
@@ -209,7 +188,7 @@ class HolzapfelOgden:
         """
         return 0.25 * self.parameters["kappa"] * (J ** 2 - 1 - 2 * dolfin.ln(J))
 
-    def W_visco(self, F):
+    def W_visco(self, F, F_dot):
         """Viscoelastic contributions
 
         Parameters
@@ -217,15 +196,16 @@ class HolzapfelOgden:
         F : [type]
             [description]
         """
-        # TODO: Figure out how to implement this
-        return 0.0
+        E_dot = 0.5 * (F.T * F_dot + F_dot.T * F)
+        E_dot2 = E_dot.T * E_dot  # FIXME: Is this correct?
+        return 0.5 * self.parameters["eta"] * dolfin.tr(E_dot2)
 
     def Wactive(self, I4f, diff=0):
         if diff == 1:
-            return self.parameters["tau"]
-        return dolfin.Constant(0.5) * self.parameters["tau"] * (I4f - 1)
+            return self.tau
+        return dolfin.Constant(0.5) * self.tau * (I4f - 1)
 
-    def strain_energy(self, F):
+    def strain_energy(self, F, F_dot):
         """
         Strain-energy density function.
         """
@@ -245,7 +225,7 @@ class HolzapfelOgden:
         Wactive = self.Wactive(I4f, diff=0)
 
         # Vicoelastic
-        Wvisco = self.W_visco(F)
+        Wvisco = self.W_visco(F, F_dot)
 
         W1 = self.W_1(I1, diff=0)
         W4f = self.W_4(I4f, "f", diff=0)
@@ -254,20 +234,3 @@ class HolzapfelOgden:
 
         W = W1 + W4f + W4s + W8fs + Wcompress + Wvisco + Wactive
         return W
-
-
-def plot_activation_function():
-    import matplotlib.pyplot as plt
-
-    t = np.linspace(0, 1, 200)
-    fig, ax = plt.subplots()
-    ax.plot(*activation_function(t_span=(0, 1), t_eval=t))
-    ax.set_title("Activation fuction \u03C4(t)")
-    ax.set_ylabel("Pressure [Pa]")
-    ax.set_xlabel("Time [s]")
-    plt.show()
-
-
-if __name__ == "__main__":
-
-    plot_activation_function()
