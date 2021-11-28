@@ -87,7 +87,7 @@ def main():
     geo = EllipsoidGeometry.from_file(path)
 
     tau = dolfin.Constant(0.0)
-    dt = 0.01
+    dt = 0.001
     time = np.arange(0, 1, dt)
     _, act = activation_function((0, 1), t_eval=time)
 

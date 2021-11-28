@@ -163,7 +163,8 @@ class Problem:
         ds = dolfin.ds(domain=self.geometry.mesh, subdomain_data=self.geometry.ffun)
 
         F = dolfin.variable(dolfin.grad(u) + dolfin.Identity(3))
-        F_dot = dolfin.grad(v)
+        J = dolfin.det(F)
+        F_dot = dolfin.grad((u - self.u_old) / self.parameters["dt"])
 
         # Normal vectors
         N = dolfin.FacetNormal(self.geometry.mesh)
@@ -180,7 +181,7 @@ class Problem:
 
         external_work = (
             dolfin.inner(self.parameters["rho"] * a, w) * dolfin.dx
-            - dolfin.inner(w, self.parameters["p"] * n) * ds(endo)
+            - dolfin.inner(self.parameters["p"] * J * n, w) * ds(endo)
             + (
                 dolfin.inner(self.parameters["alpha_epi"] * u, N)
                 + dolfin.inner(self.parameters["beta_epi"] * v, N)
