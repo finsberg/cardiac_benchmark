@@ -197,8 +197,7 @@ class HolzapfelOgden:
             [description]
         """
         E_dot = 0.5 * (F.T * F_dot + F_dot.T * F)
-        E_dot2 = E_dot.T * E_dot  # FIXME: Is this correct?
-        return 0.5 * self.parameters["eta"] * dolfin.tr(E_dot2)
+        return 0.5 * self.parameters["eta"] * dolfin.tr(E_dot * E_dot)
 
     def Wactive(self, I4f, diff=0):
         if diff == 1:
