@@ -171,6 +171,7 @@ class Problem:
 
         F = dolfin.variable(dolfin.grad(u) + dolfin.Identity(3))
         J = dolfin.det(F)
+        I = dolfin.Identity(3)
         F_dot = dolfin.grad(
             (u - self.u_old) / self.parameters["dt"],
         )  # FIXME: Is this correct?
@@ -190,18 +191,22 @@ class Problem:
 
         external_work = (
             dolfin.inner(self.parameters["rho"] * a, w) * dolfin.dx
-            - dolfin.inner(self.parameters["p"] * J * n, w) * ds(endo)
+            - dolfin.inner(self.parameters["p"] * I * J * n, w) * ds(endo)
             + (
-                dolfin.inner(self.parameters["alpha_epi"] * u, N)
-                + dolfin.inner(self.parameters["beta_epi"] * v, N)
+                dolfin.inner(
+                    dolfin.dot(self.parameters["alpha_epi"] * u, N)
+                    + dolfin.dot(self.parameters["beta_epi"] * v, N),
+                    dolfin.dot(w, N),
+                )
             )
-            * dolfin.inner(w, N)
             * ds(epi)
             + (
-                dolfin.inner(self.parameters["alpha_top"] * u, N)
-                + dolfin.inner(self.parameters["beta_top"] * v, N)
+                dolfin.inner(
+                    dolfin.dot(self.parameters["alpha_top"] * u, N)
+                    + dolfin.dot(self.parameters["beta_top"] * v, N),
+                    dolfin.dot(w, N),
+                )
             )
-            * dolfin.inner(w, N)
             * ds(top)
         )
 
