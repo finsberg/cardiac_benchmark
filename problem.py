@@ -202,9 +202,8 @@ class Problem:
             * ds(epi)
             + (
                 dolfin.inner(
-                    dolfin.dot(self.parameters["alpha_top"] * u, N)
-                    + dolfin.dot(self.parameters["beta_top"] * v, N),
-                    dolfin.dot(w, N),
+                    self.parameters["alpha_top"] * u + self.parameters["beta_top"] * v,
+                    w,
                 )
             )
             * ds(top)
