@@ -171,9 +171,10 @@ class Problem:
 
         F = dolfin.variable(dolfin.grad(u) + dolfin.Identity(3))
         I = dolfin.Identity(3)  # noqa: E741
-        F_dot = dolfin.grad(
-            (u - self.u_old) / self.parameters["dt"],
-        )  # FIXME: Is this correct?
+        # F_dot = dolfin.grad(
+        #     (u - self.u_old) / self.parameters["dt"],
+        # )  # FIXME: Is this correct?
+        F_dot = dolfin.grad(v)
 
         # Normal vectors
         N = dolfin.FacetNormal(self.geometry.mesh)
