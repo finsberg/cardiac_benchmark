@@ -170,8 +170,7 @@ class Problem:
         ds = dolfin.ds(domain=self.geometry.mesh, subdomain_data=self.geometry.ffun)
 
         F = dolfin.variable(dolfin.grad(u) + dolfin.Identity(3))
-        J = dolfin.det(F)
-        I = dolfin.Identity(3)
+        I = dolfin.Identity(3)  # noqa: E741
         F_dot = dolfin.grad(
             (u - self.u_old) / self.parameters["dt"],
         )  # FIXME: Is this correct?
@@ -191,7 +190,7 @@ class Problem:
 
         external_work = (
             dolfin.inner(self.parameters["rho"] * a, w) * dolfin.dx
-            - dolfin.inner(self.parameters["p"] * I * J * n, w) * ds(endo)
+            - dolfin.inner(self.parameters["p"] * I * n, w) * ds(endo)
             + (
                 dolfin.inner(
                     dolfin.dot(self.parameters["alpha_epi"] * u, N)
