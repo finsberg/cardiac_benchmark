@@ -3,12 +3,12 @@ channels:
   - default
   - conda-forge
 dependencies:
-  - python
-  - pip
-  - numpy
-  - scipy
-  - matplotlib
+  - python==3.9.7
+  - pip==21.3.1
+  - numpy==1.21.4
+  - scipy==1.7.3
+  - matplotlib==3.5.0
   - fenics==2019.1.0
-  - python-gmsh
-  - meshio
-  - h5py
+  - python-gmsh==4.8.4
+  - meshio==5.0.4
+  - h5py==3.3.0
