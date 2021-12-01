@@ -21,7 +21,7 @@ GmshGeometry = namedtuple(
 )
 
 
-def create_mesh(mesh, cell_type, prune_z=True):
+def create_mesh(mesh, cell_type):
     # From http://jsdokken.com/converted_files/tutorial_pygmsh.html
     cells = mesh.get_cells_type(cell_type)
     cell_data = mesh.get_cell_data("gmsh:physical", cell_type)
@@ -30,8 +30,6 @@ def create_mesh(mesh, cell_type, prune_z=True):
         cells={cell_type: cells},
         cell_data={"name_to_read": [cell_data]},
     )
-    if prune_z:
-        out_mesh.prune_z_0()
     return out_mesh
 
 
