@@ -54,7 +54,10 @@ def plot_activation_function(t):
     fig.savefig("activation_function.png")
 
 
-def plot_componentwise_displacement(loader: DataLoader):
+def plot_componentwise_displacement(
+    loader: DataLoader,
+    fname="componentwise_displacement.png",
+):
 
     p0 = (0.025, 0.03, 0)
     up0 = loader.deformation_at_point(p0)
@@ -66,16 +69,18 @@ def plot_componentwise_displacement(loader: DataLoader):
     ax[0].plot(loader.time_stamps, up0[:, 0], label="x")
     ax[0].plot(loader.time_stamps, up0[:, 1], label="y")
     ax[0].plot(loader.time_stamps, up0[:, 2], label="z")
-    ax[0].legend()
     ax[0].set_ylabel("$u(p_0)$[m]")
 
     ax[1].plot(loader.time_stamps, up1[:, 0], label="x")
     ax[1].plot(loader.time_stamps, up1[:, 1], label="y")
     ax[1].plot(loader.time_stamps, up1[:, 2], label="z")
-    ax[1].legend()
     ax[1].set_ylabel("$u(p_1)$[m]")
     ax[1].set_xlabel("Time [s]")
-    fig.savefig("componentwise_displacement.png")
+
+    for axi in ax:
+        axi.legend()
+        axi.grid()
+    fig.savefig(fname)
 
 
 def solve(problem, tau, act, time, collector):
@@ -128,17 +133,18 @@ def main():
     plot_activation_function(t=time)
     _, act = activation_function((0, 1), t_eval=time)
 
-    material = HolzapfelOgden(f0=geo.f0, s0=geo.s0, tau=tau)
+    material = HolzapfelOgden(f0=geo.f0, n0=geo.n0, tau=tau)
 
     problem = Problem(
         geometry=geo,
         material=material,
         solver_parameters={"verbose": True},
     )
+
     problem.parameters["dt"].assign(dt)
     problem.solve()
 
-    result_filepath = Path("results.h5")
+    result_filepath = Path("p2_n_results.h5")
     collector = DataCollector(result_filepath, u=problem.u)
 
     solve(problem, tau, act, time, collector)
@@ -146,10 +152,10 @@ def main():
 
 def postprocess():
 
-    loader = DataLoader("results.h5")
-    loader.to_xdmf("u.xdmf")
+    loader = DataLoader("p2_n_results.h5")
+    loader.to_xdmf("u_n_p2.xdmf")
 
-    plot_componentwise_displacement(loader)
+    plot_componentwise_displacement(loader, "p2_n_componentwise_displacement.png")
 
 
 if __name__ == "__main__":

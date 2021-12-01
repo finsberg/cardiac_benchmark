@@ -45,7 +45,7 @@ class Problem:
             `Problem.default_parmaeters`
         function_space : str, optional
             A string of the form `"{family}_{degree}` representing
-            the function space for the displacement, by default "P_1"
+            the function space for the displacement, by default "P_2"
         """
         self.geometry = geometry
         self.material = material
@@ -171,9 +171,6 @@ class Problem:
 
         F = dolfin.variable(dolfin.grad(u) + dolfin.Identity(3))
         I = dolfin.Identity(3)  # noqa: E741
-        # F_dot = dolfin.grad(
-        #     (u - self.u_old) / self.parameters["dt"],
-        # )  # FIXME: Is this correct?
         F_dot = dolfin.grad(v)
         E_dot = dolfin.variable(0.5 * (F.T * F_dot + F_dot.T * F))
 
