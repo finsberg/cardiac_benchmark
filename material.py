@@ -188,7 +188,7 @@ class HolzapfelOgden:
         """
         return 0.25 * self.parameters["kappa"] * (J ** 2 - 1 - 2 * dolfin.ln(J))
 
-    def W_visco(self, F, F_dot):
+    def W_visco(self, E_dot):
         """Viscoelastic contributions
 
         Parameters
@@ -196,7 +196,6 @@ class HolzapfelOgden:
         F : [type]
             [description]
         """
-        E_dot = 0.5 * (F.T * F_dot + F_dot.T * F)
         return 0.5 * self.parameters["eta"] * dolfin.tr(E_dot * E_dot)
 
     def Wactive(self, I4f, diff=0):
@@ -204,7 +203,7 @@ class HolzapfelOgden:
             return self.tau
         return dolfin.Constant(0.5) * self.tau * (I4f - 1)
 
-    def strain_energy(self, F, F_dot):
+    def strain_energy(self, F):
         """
         Strain-energy density function.
         """
@@ -224,12 +223,12 @@ class HolzapfelOgden:
         Wactive = self.Wactive(I4f, diff=0)
 
         # Vicoelastic
-        Wvisco = self.W_visco(F, F_dot)
+        # Wvisco = self.W_visco(F, F_dot)
 
         W1 = self.W_1(I1, diff=0)
         W4f = self.W_4(I4f, "f", diff=0)
         W4s = self.W_4(I4s, "s", diff=0)
         W8fs = self.W_8(I8fs, diff=0)
 
-        W = W1 + W4f + W4s + W8fs + Wcompress + Wvisco + Wactive
+        W = W1 + W4f + W4s + W8fs + Wcompress + Wactive
         return W

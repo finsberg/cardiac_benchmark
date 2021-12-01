@@ -29,7 +29,7 @@ class Problem:
         geometry: EllipsoidGeometry,
         material: HolzapfelOgden,
         parameters: typing.Optional[typing.Dict[str, dolfin.Constant]] = None,
-        function_space: str = "P_1",
+        function_space: str = "P_2",
         solver_parameters=None,
     ) -> None:
         """Constructor
@@ -175,6 +175,7 @@ class Problem:
         #     (u - self.u_old) / self.parameters["dt"],
         # )  # FIXME: Is this correct?
         F_dot = dolfin.grad(v)
+        E_dot = dolfin.variable(0.5 * (F.T * F_dot + F_dot.T * F))
 
         # Normal vectors
         N = dolfin.FacetNormal(self.geometry.mesh)
@@ -187,7 +188,7 @@ class Problem:
         epi = self.geometry.markers["EPI"][0]
         top = self.geometry.markers["BASE"][0]
 
-        internal_energy = self.material.strain_energy(F, F_dot)
+        internal_energy = self.material.strain_energy(F)
 
         external_work = (
             dolfin.inner(self.parameters["rho"] * a, w) * dolfin.dx
@@ -207,6 +208,11 @@ class Problem:
                 )
             )
             * ds(top)
+            + dolfin.inner(
+                F * dolfin.diff(self.material.W_visco(E_dot), E_dot),
+                F.T * dolfin.grad(w),
+            )
+            * dolfin.dx
         )
 
         self._virtual_work = (
