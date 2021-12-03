@@ -2,7 +2,6 @@ import math
 from pathlib import Path
 
 import dolfin
-import matplotlib.pyplot as plt
 import numpy as np
 import scipy.integrate
 
@@ -56,53 +55,6 @@ def plot_activation_function(t):
     ax.set_ylabel("Pressure [Pa]")
     ax.set_xlabel("Time [s]")
     fig.savefig("activation_function.png")
-
-
-def plot_componentwise_displacement(
-    loader: DataLoader,
-    fname="componentwise_displacement.png",
-):
-    fname = Path(fname).with_suffix(".png")
-    p0 = (0.025, 0.03, 0)
-    up0 = loader.deformation_at_point(p0)
-    basefname = fname.with_suffix("").as_posix()
-    np.save(Path(basefname + "_up0").with_suffix(".npy"), up0)
-
-    p1 = (0, 0.03, 0)
-    up1 = loader.deformation_at_point(p1)
-    np.save(Path(basefname + "_up1").with_suffix(".npy"), up1)
-
-    fig, ax = plt.subplots(2, 1, sharex=True)
-    ax[0].plot(loader.time_stamps, up0[:, 0], label="x")
-    ax[0].plot(loader.time_stamps, up0[:, 1], label="y")
-    ax[0].plot(loader.time_stamps, up0[:, 2], label="z")
-    ax[0].set_ylabel("$u(p_0)$[m]")
-
-    ax[1].plot(loader.time_stamps, up1[:, 0], label="x")
-    ax[1].plot(loader.time_stamps, up1[:, 1], label="y")
-    ax[1].plot(loader.time_stamps, up1[:, 2], label="z")
-    ax[1].set_ylabel("$u(p_1)$[m]")
-    ax[1].set_xlabel("Time [s]")
-
-    for axi in ax:
-        axi.legend()
-        axi.grid()
-    fig.savefig(fname)
-
-
-def plot_volume(loader: DataLoader, fname="volume.png"):
-    volumes = loader.cavity_volume()
-    fname = Path(fname).with_suffix(".png")
-    basefname = fname.with_suffix("").as_posix()
-    np.save(Path(basefname + "_volumes").with_suffix(".npy"), volumes)
-
-    fig, ax = plt.subplots()
-    ax.plot(loader.time_stamps, volumes)
-    ax.set_ylabel("Volume [m^3]")
-    ax.set_xlabel("Time [s]")
-    ax.grid()
-    ax.set_title("Volume throug time")
-    fig.savefig(fname)
 
 
 def solve(problem, tau, act, time, collector):
@@ -179,13 +131,10 @@ def main():
 def postprocess():
     geo = get_geometry()
 
-    loader = DataLoader("results.h5", geo)
-    loader.to_xdmf("u.xdmf")
-
-    plot_componentwise_displacement(loader, "componentwise_displacement.png")
-    plot_volume(loader, "volume.png")
+    loader = DataLoader("p1_results.h5", geo)
+    loader.postprocess_all()
 
 
 if __name__ == "__main__":
-    main()
+    # main()
     postprocess()

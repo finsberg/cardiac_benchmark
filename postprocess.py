@@ -1,8 +1,8 @@
-import itertools as it
 from pathlib import Path
 
 import dolfin
 import h5py
+import matplotlib.pyplot as plt
 import numpy as np
 import ufl
 from dolfin import FiniteElement  # noqa: F401
@@ -121,19 +121,12 @@ class DataLoader:
             xdmf.write(u, t)
         xdmf.close()
 
-    def _deformation_at_time_point(self, arg):
-        t, p = arg
-        print(f"Deformation at time {t}", end="\r")
-        return self.get(t)(p)
-
     def deformation_at_point(self, p):
         print(f"Compute deformation at point {p}")
-        us = list(
-            map(
-                self._deformation_at_time_point,
-                zip(self.time_stamps, it.repeat(p)),
-            ),
-        )
+        us = []
+        for t in self.time_stamps:
+            print(f"Deformation at time {t}", end="\r")
+            us.append(self._deformation_at_time_point(self.get(t)(p)))
 
         return np.array(us)
 
@@ -144,12 +137,81 @@ class DataLoader:
         F = dolfin.grad(u_int) + dolfin.Identity(3)
         return (-1.0 / 3.0) * dolfin.dot(X + u, ufl.cofac(F) * N)
 
-    def _volume_at_timepoint(self, t):
-        print(f"Volume at time {t}", end="\r")
-        u = self.get(t)
+    def _volume_at_timepoint(self, u):
         return dolfin.assemble(self._volume_form(u) * self.ds)
 
     def cavity_volume(self):
         print("Compute cavity volume...")
-        vols = list(map(self._volume_at_timepoint, self.time_stamps))
+        vols = []
+        for t in self.time_stamps:
+            print(f"Volume at time {t}", end="\r")
+            u = self.get(t)
+            vols.append(self._volume_at_timepoint(u))
         return np.array(vols)
+
+    def postprocess_all(self):
+        xdmf = dolfin.XDMFFile(self.geometry.mesh.mpi_comm(), "u.xdmf")
+        p0 = (0.025, 0.03, 0)
+        p1 = (0, 0.03, 0)
+        vols = []
+        up0 = []
+        up1 = []
+        for t in self.time_stamps:
+            print(f"Time {t}", end="\r")
+            u = self.get(t)
+            xdmf.write(u, t)
+            up0.append(u(p0))
+            up1.append(u(p1))
+            vols.append(self._volume_at_timepoint(u))
+        xdmf.close()
+
+        plot_componentwise_displacement(
+            up0=np.array(up0),
+            up1=np.array(up1),
+            time_stamps=self.time_stamps,
+        )
+        plot_volume(volumes=vols, time_stamps=self.time_stamps)
+
+
+def plot_componentwise_displacement(
+    up0,
+    up1,
+    time_stamps,
+    fname="componentwise_displacement.png",
+):
+    fname = Path(fname).with_suffix(".png")
+
+    basefname = fname.with_suffix("").as_posix()
+    np.save(Path(basefname + "_up0").with_suffix(".npy"), up0)
+    np.save(Path(basefname + "_up1").with_suffix(".npy"), up1)
+
+    fig, ax = plt.subplots(2, 1, sharex=True)
+    ax[0].plot(time_stamps, up0[:, 0], label="x")
+    ax[0].plot(time_stamps, up0[:, 1], label="y")
+    ax[0].plot(time_stamps, up0[:, 2], label="z")
+    ax[0].set_ylabel("$u(p_0)$[m]")
+
+    ax[1].plot(time_stamps, up1[:, 0], label="x")
+    ax[1].plot(time_stamps, up1[:, 1], label="y")
+    ax[1].plot(time_stamps, up1[:, 2], label="z")
+    ax[1].set_ylabel("$u(p_1)$[m]")
+    ax[1].set_xlabel("Time [s]")
+
+    for axi in ax:
+        axi.legend()
+        axi.grid()
+    fig.savefig(fname)
+
+
+def plot_volume(volumes, time_stamps, fname="volume.png"):
+    fname = Path(fname).with_suffix(".png")
+    basefname = fname.with_suffix("").as_posix()
+    np.save(Path(basefname + "_volumes").with_suffix(".npy"), volumes)
+
+    fig, ax = plt.subplots()
+    ax.plot(time_stamps, volumes)
+    ax.set_ylabel("Volume [m^3]")
+    ax.set_xlabel("Time [s]")
+    ax.grid()
+    ax.set_title("Volume throug time")
+    fig.savefig(fname)
