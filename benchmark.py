@@ -102,6 +102,7 @@ def plot_volume(loader: DataLoader, fname="volume.png"):
     ax.set_xlabel("Time [s]")
     ax.grid()
     ax.set_title("Volume throug time")
+    fig.savefig(fname)
 
 
 def solve(problem, tau, act, time, collector):
@@ -164,13 +165,13 @@ def main():
         geometry=geo,
         material=material,
         solver_parameters={"verbose": True},
-        function_space="P_1",
+        function_space="P_2",
     )
 
     problem.parameters["dt"].assign(dt)
     problem.solve()
 
-    result_filepath = Path("p1_results.h5")
+    result_filepath = Path("results.h5")
     collector = DataCollector(result_filepath, u=problem.u, geometry=geo)
 
     solve(problem, tau, act, time, collector)
@@ -179,13 +180,13 @@ def main():
 def postprocess():
     geo = get_geometry()
 
-    loader = DataLoader("p1_results.h5", geo)
-    loader.to_xdmf("u_mumps.xdmf")
+    loader = DataLoader("results.h5", geo)
+    loader.to_xdmf("u.xdmf")
 
-    plot_componentwise_displacement(loader, "p1_componentwise_displacement.png")
-    plot_volume(loader, "p1_volume.png")
+    plot_componentwise_displacement(loader, "componentwise_displacement.png")
+    plot_volume(loader, "volume.png")
 
 
 if __name__ == "__main__":
-    main()
+    # main()
     postprocess()

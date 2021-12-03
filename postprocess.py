@@ -114,8 +114,10 @@ class DataLoader:
         return self._path.as_posix()
 
     def to_xdmf(self, path):
-        xdmf = dolfin.XDMFFile(self.mesh.mpi_comm(), path)
+        print("Write displacement to xdmf")
+        xdmf = dolfin.XDMFFile(self.geometry.mesh.mpi_comm(), path)
         for t in self.time_stamps:
+            print(f"Time {t}", end="\r")
             u = self.get(t)
             xdmf.write(u, t)
         xdmf.close()
