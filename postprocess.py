@@ -46,7 +46,7 @@ class DataCollector:
 
 
 class DataLoader:
-    def __init__(self, path, geo) -> None:
+    def __init__(self, path) -> None:
         self._path = Path(path)
         if not self._path.is_file():
             raise FileNotFoundError(f"File {path} does not exist")
