@@ -14,6 +14,10 @@ from problem import Problem
 
 
 dolfin.parameters["form_compiler"]["quadrature_degree"] = 4
+dolfin.parameters["form_compiler"]["cpp_optimize"] = True
+dolfin.parameters["form_compiler"]["representation"] = "uflacs"
+flags = ["-O3", "-march=native"]
+dolfin.parameters["form_compiler"]["cpp_optimize_flags"] = " ".join(flags)
 # TODO: Should we add more compiler flags?
 
 
@@ -58,12 +62,15 @@ def plot_componentwise_displacement(
     loader: DataLoader,
     fname="componentwise_displacement.png",
 ):
-
+    fname = Path(fname).with_suffix(".png")
     p0 = (0.025, 0.03, 0)
     up0 = loader.deformation_at_point(p0)
+    basefname = fname.with_suffix("").as_posix()
+    np.save(Path(basefname + "_up0").with_suffix(".npy"), up0)
 
     p1 = (0, 0.03, 0)
     up1 = loader.deformation_at_point(p1)
+    np.save(Path(basefname + "_up1").with_suffix(".npy"), up1)
 
     fig, ax = plt.subplots(2, 1, sharex=True)
     ax[0].plot(loader.time_stamps, up0[:, 0], label="x")
@@ -81,6 +88,20 @@ def plot_componentwise_displacement(
         axi.legend()
         axi.grid()
     fig.savefig(fname)
+
+
+def plot_volume(loader: DataLoader, fname="volume.png"):
+    volumes = loader.cavity_volume()
+    fname = Path(fname).with_suffix(".png")
+    basefname = fname.with_suffix("").as_posix()
+    np.save(Path(basefname + "_volumes").with_suffix(".npy"), volumes)
+
+    fig, ax = plt.subplots()
+    ax.plot(loader.time_stamps, volumes)
+    ax.set_ylabel("Volume [m^3]")
+    ax.set_xlabel("Time [s]")
+    ax.grid()
+    ax.set_title("Volume throug time")
 
 
 def solve(problem, tau, act, time, collector):
@@ -120,12 +141,16 @@ def solve(problem, tau, act, time, collector):
         collector.store(t)
 
 
-def main():
+def get_geometry():
     path = Path("geometry.h5")
     if not path.is_file():
         geo = EllipsoidGeometry.from_parameters()
         geo.save(path)
-    geo = EllipsoidGeometry.from_file(path)
+    return EllipsoidGeometry.from_file(path)
+
+
+def main():
+    geo = get_geometry()
 
     tau = dolfin.Constant(0.0)
     dt = 0.001
@@ -139,23 +164,26 @@ def main():
         geometry=geo,
         material=material,
         solver_parameters={"verbose": True},
+        function_space="P_1",
     )
 
     problem.parameters["dt"].assign(dt)
     problem.solve()
 
-    result_filepath = Path("p2_n_results.h5")
-    collector = DataCollector(result_filepath, u=problem.u)
+    result_filepath = Path("p1_results.h5")
+    collector = DataCollector(result_filepath, u=problem.u, geometry=geo)
 
     solve(problem, tau, act, time, collector)
 
 
 def postprocess():
+    geo = get_geometry()
 
-    loader = DataLoader("p2_n_results.h5")
-    loader.to_xdmf("u_n_p2.xdmf")
+    loader = DataLoader("p1_results.h5", geo)
+    loader.to_xdmf("u_mumps.xdmf")
 
-    plot_componentwise_displacement(loader, "p2_n_componentwise_displacement.png")
+    plot_componentwise_displacement(loader, "p1_componentwise_displacement.png")
+    plot_volume(loader, "p1_volume.png")
 
 
 if __name__ == "__main__":
