@@ -187,5 +187,5 @@ def postprocess():
 
 
 if __name__ == "__main__":
-    # main()
+    main()
     postprocess()
