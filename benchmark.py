@@ -164,7 +164,6 @@ def main():
     problem = Problem(
         geometry=geo,
         material=material,
-        solver_parameters={"verbose": True},
         function_space="P_2",
     )
 
@@ -188,5 +187,5 @@ def postprocess():
 
 
 if __name__ == "__main__":
-    # main()
+    main()
     postprocess()
