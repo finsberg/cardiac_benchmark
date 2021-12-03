@@ -164,7 +164,7 @@ def main():
     problem = Problem(
         geometry=geo,
         material=material,
-        function_space="P_2",
+        function_space="P_1",
     )
 
     problem.parameters["dt"].assign(dt)
@@ -187,5 +187,5 @@ def postprocess():
 
 
 if __name__ == "__main__":
-    main()
+    # main()
     postprocess()

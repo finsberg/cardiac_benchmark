@@ -29,7 +29,7 @@ class Problem:
         geometry: EllipsoidGeometry,
         material: HolzapfelOgden,
         parameters: typing.Optional[typing.Dict[str, dolfin.Constant]] = None,
-        function_space: str = "P_2",
+        function_space: str = "P_1",
         solver_parameters=None,
     ) -> None:
         """Constructor

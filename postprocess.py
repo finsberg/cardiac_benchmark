@@ -1,4 +1,3 @@
-import concurrent.futures
 import itertools as it
 from pathlib import Path
 
@@ -129,13 +128,12 @@ class DataLoader:
 
     def deformation_at_point(self, p):
         print(f"Compute deformation at point {p}")
-        with concurrent.futures.ThreadPoolExecutor() as executor:
-            us = list(
-                executor.map(
-                    self._deformation_at_time_point,
-                    zip(self.time_stamps, it.repeat(p)),
-                ),
-            )
+        us = list(
+            map(
+                self._deformation_at_time_point,
+                zip(self.time_stamps, it.repeat(p)),
+            ),
+        )
 
         return np.array(us)
 
@@ -153,6 +151,5 @@ class DataLoader:
 
     def cavity_volume(self):
         print("Compute cavity volume...")
-        with concurrent.futures.ThreadPoolExecutor() as executor:
-            vols = list(executor.map(self._volume_at_timepoint, self.time_stamps))
+        vols = list(map(self._volume_at_timepoint, self.time_stamps))
         return np.array(vols)
