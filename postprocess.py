@@ -46,7 +46,7 @@ class DataCollector:
 
 
 class DataLoader:
-    def __init__(self, path, geo) -> None:
+    def __init__(self, path) -> None:
         self._path = Path(path)
         if not self._path.is_file():
             raise FileNotFoundError(f"File {path} does not exist")
@@ -94,7 +94,6 @@ class DataLoader:
         )(self.geometry.markers["ENDO"][0])
 
         V = dolfin.FunctionSpace(mesh, self.signature)
-        self._V_cg1 = dolfin.VectorFunctionSpace(mesh, "CG", 1)
         self.u = dolfin.Function(V)
 
     def get(self, t):
@@ -133,8 +132,7 @@ class DataLoader:
     def _volume_form(self, u):
         X = dolfin.SpatialCoordinate(self.geometry.mesh) - self._shift
         N = dolfin.FacetNormal(self.geometry.mesh)
-        u_int = dolfin.interpolate(u, self._V_cg1)
-        F = dolfin.grad(u_int) + dolfin.Identity(3)
+        F = dolfin.grad(u) + dolfin.Identity(3)
         return (-1.0 / 3.0) * dolfin.dot(X + u, ufl.cofac(F) * N)
 
     def _volume_at_timepoint(self, u):

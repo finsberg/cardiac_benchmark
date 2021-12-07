@@ -129,9 +129,7 @@ def main():
 
 
 def postprocess():
-    geo = get_geometry()
-
-    loader = DataLoader("p1_results.h5", geo)
+    loader = DataLoader("results.h5")
     loader.postprocess_all()
 
 
