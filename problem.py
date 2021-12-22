@@ -76,10 +76,8 @@ class Problem:
         self.v_old = dolfin.Function(self.u_space)
         self.a_old = dolfin.Function(self.u_space)
 
-    def v(
-        self,
-        as_vector: bool = False,
-    ) -> typing.Union[dolfin.Function, dolfin.Vector]:
+    @property
+    def v(self) -> dolfin.Function:
         r"""
         Velocity computed using the generalized
         :math:`alpha`-method
@@ -88,34 +86,20 @@ class Problem:
 
             v_{i+1} = v_i + (1-\gamma) \Delta t a_i + \gamma \Delta t a_{i+1}
 
-
-        Parameters
-        ----------
-        as_vector : bool, optional
-            Flag for saying whether to return the
-            velocity as a function or a vector, by default False
-
         Returns
         -------
-        typing.Union[dolfin.Function, dolfin.Vector]
+        dolfin.Function
             The velocity
         """
-        if as_vector:
-            v_old = self.v_old.vector()
-            a_old = self.a_old.vector()
-            a = self.a(as_vector)
-        else:
-            v_old = self.v_old
-            a_old = self.a_old
-            a = self.a()
+        v_old = self.v_old
+        a_old = self.a_old
+        a = self.a
 
         dt = self.parameters["dt"]
         return v_old + (1 - self._gamma) * dt * a_old + self._gamma * dt * a
 
-    def a(
-        self,
-        as_vector: bool = False,
-    ) -> typing.Union[dolfin.Function, dolfin.Vector]:
+    @property
+    def a(self) -> dolfin.Function:
         r"""
         Acceleration computed using the generalized
         :math:`alpha`-method
@@ -124,28 +108,15 @@ class Problem:
 
             a_{i+1} = \frac{u_{i+1} - (u_i + \Delta t v_i + (0.5 - \beta) \Delta t^2 a_i)}{\beta \Delta t^2}
 
-
-        Parameters
-        ----------
-        as_vector : bool, optional
-            Flag for saying whether to return the
-            acceleration as a function or a vector, by default False
-
         Returns
         -------
-        typing.Union[dolfin.Function, dolfin.Vector]
+        dolfin.Function
             The acceleration
         """
-        if as_vector:
-            u = self.u.vector()
-            u_old = self.u_old.vector()
-            v_old = self.v_old.vector()
-            a_old = self.a_old.vector()
-        else:
-            u = self.u
-            u_old = self.u_old
-            v_old = self.v_old
-            a_old = self.a_old
+        u = self.u
+        u_old = self.u_old
+        v_old = self.v_old
+        a_old = self.a_old
 
         dt = self.parameters["dt"]
         dt2 = dt ** 2
@@ -156,15 +127,15 @@ class Problem:
         """Update old values of displacement, velocity
         and accelaration
         """
-        self.v_old.vector()[:] = self.v(as_vector=True)
-        self.a_old.vector()[:] = self.a(as_vector=True)
-        self.u_old.vector()[:] = self.u.vector()
+        self.v_old.assign(dolfin.project(self.v, self.v_old.function_space()))
+        self.a_old.assign(dolfin.project(self.a, self.a_old.function_space()))
+        self.u_old.assign(self.u)
 
     def _init_forms(self) -> None:
         """Initialize ufl forms"""
         u = self.u
-        v = self.v()
-        a = self.a()
+        v = self.v
+        a = self.a
         w = self.u_test
 
         ds = dolfin.ds(domain=self.geometry.mesh, subdomain_data=self.geometry.ffun)
@@ -266,7 +237,7 @@ class Problem:
 
     def solve(self) -> bool:
         """Solve the system"""
-
+        self._init_forms()
         _, conv = self.solver.solve()
 
         if not conv:
