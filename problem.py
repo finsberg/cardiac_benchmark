@@ -136,47 +136,66 @@ class Problem:
             * dolfin.dx
         )
 
-    @property
-    def v(self) -> dolfin.Function:
+    def v(
+        self,
+        as_vector: bool = False,
+    ) -> typing.Union[dolfin.Function, dolfin.Vector]:
         r"""
         Velocity computed using the generalized
         :math:`alpha`-method
-
         .. math::
-
             v_{i+1} = v_i + (1-\gamma) \Delta t a_i + \gamma \Delta t a_{i+1}
-
+        Parameters
+        ----------
+        as_vector : bool, optional
+            Flag for saying whether to return the
+            velocity as a function or a vector, by default False
         Returns
         -------
-        dolfin.Function
+        typing.Union[dolfin.Function, dolfin.Vector]
             The velocity
         """
-        v_old = self.v_old
-        a_old = self.a_old
-        a = self.a
+        if as_vector:
+            v_old = self.v_old.vector()
+            a_old = self.a_old.vector()
+            a = self.a(as_vector)
+        else:
+            v_old = self.v_old
+            a_old = self.a_old
+            a = self.a()
 
         dt = self.parameters["dt"]
         return v_old + (1 - self._gamma) * dt * a_old + self._gamma * dt * a
 
-    @property
-    def a(self) -> dolfin.Function:
+    def a(
+        self,
+        as_vector: bool = False,
+    ) -> typing.Union[dolfin.Function, dolfin.Vector]:
         r"""
         Acceleration computed using the generalized
         :math:`alpha`-method
-
         .. math::
-
             a_{i+1} = \frac{u_{i+1} - (u_i + \Delta t v_i + (0.5 - \beta) \Delta t^2 a_i)}{\beta \Delta t^2}
-
+        Parameters
+        ----------
+        as_vector : bool, optional
+            Flag for saying whether to return the
+            acceleration as a function or a vector, by default False
         Returns
         -------
-        dolfin.Function
+        typing.Union[dolfin.Function, dolfin.Vector]
             The acceleration
         """
-        u = self.u
-        u_old = self.u_old
-        v_old = self.v_old
-        a_old = self.a_old
+        if as_vector:
+            u = self.u.vector()
+            u_old = self.u_old.vector()
+            v_old = self.v_old.vector()
+            a_old = self.a_old.vector()
+        else:
+            u = self.u
+            u_old = self.u_old
+            v_old = self.v_old
+            a_old = self.a_old
 
         dt = self.parameters["dt"]
         dt2 = dt ** 2
@@ -187,9 +206,9 @@ class Problem:
         """Update old values of displacement, velocity
         and accelaration
         """
-        self.v_old.assign(dolfin.project(self.v, self.v_old.function_space()))
-        self.a_old.assign(dolfin.project(self.a, self.a_old.function_space()))
-        self.u_old.assign(self.u)
+        self.v_old.vector()[:] = self.v(as_vector=True)
+        self.a_old.vector()[:] = self.a(as_vector=True)
+        self.u_old.vector()[:] = self.u.vector()
 
     @property
     def ds(self):
@@ -223,11 +242,11 @@ class Problem:
         alpha_f = self.parameters["alpha_f"]
 
         self._virtual_work = self._acceleration_form(
-            interpolate(self.a_old, self.a, alpha_m),
+            interpolate(self.a_old, self.a(), alpha_m),
             w,
         ) + self._form(
             interpolate(self.u_old, self.u, alpha_f),
-            interpolate(self.v_old, self.v, alpha_f),
+            interpolate(self.v_old, self.v(), alpha_f),
             w,
         )
         self._jacobian = dolfin.derivative(
