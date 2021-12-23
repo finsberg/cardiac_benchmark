@@ -9,6 +9,10 @@ from solver import NonlinearProblem
 from solver import NonlinearSolver
 
 
+def avg(x_old, x_new, alpha):
+    return alpha * x_old + (1 - alpha) * x_new
+
+
 class Problem:
     """
     Class for the mehcanics problem
@@ -76,6 +80,59 @@ class Problem:
         self.v_old = dolfin.Function(self.u_space)
         self.a_old = dolfin.Function(self.u_space)
 
+    def M(self, a, w):
+        return dolfin.inner(self.parameters["rho"] * a, w) * dolfin.dx
+
+    def C(self, u, v, w):
+        F = dolfin.variable(dolfin.grad(u) + dolfin.Identity(3))
+        F_dot = dolfin.grad(v)
+        E_dot = dolfin.variable(0.5 * (F.T * F_dot + F_dot.T * F))
+        return (
+            dolfin.inner(
+                dolfin.dot(self.parameters["beta_epi"] * v, self.N),
+                dolfin.dot(w, self.N),
+            )
+            * self.ds(self.epi)
+            + dolfin.inner(
+                self.parameters["beta_top"] * v,
+                w,
+            )
+            * self.ds(self.top)
+            + dolfin.inner(
+                F * dolfin.diff(self.material.W_visco(E_dot), E_dot),
+                F.T * dolfin.grad(w),
+            )
+            * dolfin.dx
+        )
+
+    def K(self, u, w):
+        F = dolfin.variable(dolfin.grad(u) + dolfin.Identity(3))
+        return (
+            dolfin.inner(
+                dolfin.dot(self.parameters["alpha_epi"] * u, self.N),
+                dolfin.dot(w, self.N),
+            )
+            * self.ds(self.epi)
+            + dolfin.inner(
+                self.parameters["alpha_top"] * u,
+                w,
+            )
+            * self.ds(self.top)
+        ) + dolfin.inner(
+            dolfin.diff(self.material.strain_energy(F), F),
+            dolfin.grad(w),
+        ) * dolfin.dx
+
+    def F(self, u, w):
+        F = dolfin.variable(dolfin.grad(u) + dolfin.Identity(3))
+        return (
+            dolfin.inner(
+                self.parameters["p"] * dolfin.Identity(3) * ufl.cofac(F) * self.N,
+                w,
+            )
+            * self.ds(self.endo)
+        )
+
     @property
     def v(self) -> dolfin.Function:
         r"""
@@ -131,65 +188,46 @@ class Problem:
         self.a_old.assign(dolfin.project(self.a, self.a_old.function_space()))
         self.u_old.assign(self.u)
 
+    @property
+    def ds(self):
+        return dolfin.ds(domain=self.geometry.mesh, subdomain_data=self.geometry.ffun)
+
+    @property
+    def endo(self):
+        return self.geometry.markers["ENDO"][0]
+
+    @property
+    def epi(self):
+        return self.geometry.markers["EPI"][0]
+
+    @property
+    def top(self):
+        return self.geometry.markers["BASE"][0]
+
+    @property
+    def N(self):
+        return dolfin.FacetNormal(self.geometry.mesh)
+
     def _init_forms(self) -> None:
         """Initialize ufl forms"""
-        u = self.u
-        v = self.v
-        a = self.a
         w = self.u_test
-
-        ds = dolfin.ds(domain=self.geometry.mesh, subdomain_data=self.geometry.ffun)
-
-        F = dolfin.variable(dolfin.grad(u) + dolfin.Identity(3))
-        I = dolfin.Identity(3)  # noqa: E741
-        F_dot = dolfin.grad(v)
-        E_dot = dolfin.variable(0.5 * (F.T * F_dot + F_dot.T * F))
-
-        # Normal vectors
-        N = dolfin.FacetNormal(self.geometry.mesh)
-        n = ufl.cofac(F) * N
 
         # Markers
         if self.geometry.markers is None:
             raise RuntimeError("Missing markers in geometry")
-        endo = self.geometry.markers["ENDO"][0]
-        epi = self.geometry.markers["EPI"][0]
-        top = self.geometry.markers["BASE"][0]
 
-        internal_energy = self.material.strain_energy(F)
-
-        external_work = (
-            dolfin.inner(self.parameters["rho"] * a, w) * dolfin.dx
-            - dolfin.inner(self.parameters["p"] * I * n, w) * ds(endo)
-            + (
-                dolfin.inner(
-                    dolfin.dot(self.parameters["alpha_epi"] * u, N)
-                    + dolfin.dot(self.parameters["beta_epi"] * v, N),
-                    dolfin.dot(w, N),
-                )
-            )
-            * ds(epi)
-            + (
-                dolfin.inner(
-                    self.parameters["alpha_top"] * u + self.parameters["beta_top"] * v,
-                    w,
-                )
-            )
-            * ds(top)
-            + dolfin.inner(
-                F * dolfin.diff(self.material.W_visco(E_dot), E_dot),
-                F.T * dolfin.grad(w),
-            )
-            * dolfin.dx
-        )
+        alpha_m = self.parameters["alpha_m"]
+        alpha_f = self.parameters["alpha_f"]
 
         self._virtual_work = (
-            dolfin.derivative(
-                internal_energy * dolfin.dx,
-                self.u,
-                self.u_test,
+            self.M(avg(self.a_old, self.a, alpha_m), w)
+            + self.C(
+                avg(self.u_old, self.u, alpha_f),
+                avg(self.v_old, self.v, alpha_f),
+                w,
             )
-            + external_work
+            + self.K(avg(self.u_old, self.u, alpha_f), w)
+            - self.F(avg(self.u_old, self.u, alpha_f), w)
         )
 
         self._jacobian = dolfin.derivative(

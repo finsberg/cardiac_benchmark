@@ -120,7 +120,7 @@ def main():
     problem = Problem(
         geometry=geo,
         material=material,
-        function_space="P_2",
+        function_space="P_1",
     )
 
     problem.parameters["dt"].assign(dt)
