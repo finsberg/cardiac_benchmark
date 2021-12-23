@@ -9,8 +9,25 @@ from solver import NonlinearProblem
 from solver import NonlinearSolver
 
 
-def avg(x_old, x_new, alpha):
-    return alpha * x_old + (1 - alpha) * x_new
+def interpolate(x0, x1, alpha: float):
+    r"""Interpolate beteween :math:`x_0` and :math:`x_1`
+    to find `math:`x_{1-\alpha}`
+
+    Parameters
+    ----------
+    x0 : T
+        First point
+    x1 : T
+        Second point
+    alpha : float
+        Amount of interpolate
+
+    Returns
+    -------
+    T
+        `math:`x_{1-\alpha}`
+    """
+    return alpha * x0 + (1 - alpha) * x1
 
 
 class Problem:
@@ -80,57 +97,43 @@ class Problem:
         self.v_old = dolfin.Function(self.u_space)
         self.a_old = dolfin.Function(self.u_space)
 
-    def M(self, a, w):
+    def _acceleration_form(self, a, w):
         return dolfin.inner(self.parameters["rho"] * a, w) * dolfin.dx
 
-    def C(self, u, v, w):
+    def _form(self, u, v, w):
         F = dolfin.variable(dolfin.grad(u) + dolfin.Identity(3))
         F_dot = dolfin.grad(v)
         E_dot = dolfin.variable(0.5 * (F.T * F_dot + F_dot.T * F))
+        n = ufl.cofac(F) * self.N
+
         return (
-            dolfin.inner(
-                dolfin.dot(self.parameters["beta_epi"] * v, self.N),
-                dolfin.dot(w, self.N),
+            -dolfin.inner(self.parameters["p"] * dolfin.Identity(3) * n, w)
+            * self.ds(self.endo)
+            + (
+                dolfin.inner(
+                    dolfin.dot(self.parameters["alpha_epi"] * u, self.N)
+                    + dolfin.dot(self.parameters["beta_epi"] * v, self.N),
+                    dolfin.dot(w, self.N),
+                )
             )
             * self.ds(self.epi)
-            + dolfin.inner(
-                self.parameters["beta_top"] * v,
-                w,
+            + (
+                dolfin.inner(
+                    self.parameters["alpha_top"] * u + self.parameters["beta_top"] * v,
+                    w,
+                )
             )
             * self.ds(self.top)
+            + dolfin.inner(
+                dolfin.diff(self.material.strain_energy(F), F),
+                dolfin.grad(w),
+            )
+            * dolfin.dx
             + dolfin.inner(
                 F * dolfin.diff(self.material.W_visco(E_dot), E_dot),
                 F.T * dolfin.grad(w),
             )
             * dolfin.dx
-        )
-
-    def K(self, u, w):
-        F = dolfin.variable(dolfin.grad(u) + dolfin.Identity(3))
-        return (
-            dolfin.inner(
-                dolfin.dot(self.parameters["alpha_epi"] * u, self.N),
-                dolfin.dot(w, self.N),
-            )
-            * self.ds(self.epi)
-            + dolfin.inner(
-                self.parameters["alpha_top"] * u,
-                w,
-            )
-            * self.ds(self.top)
-        ) + dolfin.inner(
-            dolfin.diff(self.material.strain_energy(F), F),
-            dolfin.grad(w),
-        ) * dolfin.dx
-
-    def F(self, u, w):
-        F = dolfin.variable(dolfin.grad(u) + dolfin.Identity(3))
-        return (
-            dolfin.inner(
-                self.parameters["p"] * dolfin.Identity(3) * ufl.cofac(F) * self.N,
-                w,
-            )
-            * self.ds(self.endo)
         )
 
     @property
@@ -219,17 +222,14 @@ class Problem:
         alpha_m = self.parameters["alpha_m"]
         alpha_f = self.parameters["alpha_f"]
 
-        self._virtual_work = (
-            self.M(avg(self.a_old, self.a, alpha_m), w)
-            + self.C(
-                avg(self.u_old, self.u, alpha_f),
-                avg(self.v_old, self.v, alpha_f),
-                w,
-            )
-            + self.K(avg(self.u_old, self.u, alpha_f), w)
-            - self.F(avg(self.u_old, self.u, alpha_f), w)
+        self._virtual_work = self._acceleration_form(
+            interpolate(self.a_old, self.a, alpha_m),
+            w,
+        ) + self._form(
+            interpolate(self.u_old, self.u, alpha_f),
+            interpolate(self.v_old, self.v, alpha_f),
+            w,
         )
-
         self._jacobian = dolfin.derivative(
             self._virtual_work,
             self.u,
