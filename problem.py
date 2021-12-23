@@ -294,7 +294,6 @@ class Problem:
 
     def solve(self) -> bool:
         """Solve the system"""
-        self._init_forms()
         _, conv = self.solver.solve()
 
         if not conv:
