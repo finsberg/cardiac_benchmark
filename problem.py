@@ -9,6 +9,27 @@ from solver import NonlinearProblem
 from solver import NonlinearSolver
 
 
+def interpolate(x0, x1, alpha: float):
+    r"""Interpolate beteween :math:`x_0` and :math:`x_1`
+    to find `math:`x_{1-\alpha}`
+
+    Parameters
+    ----------
+    x0 : T
+        First point
+    x1 : T
+        Second point
+    alpha : float
+        Amount of interpolate
+
+    Returns
+    -------
+    T
+        `math:`x_{1-\alpha}`
+    """
+    return alpha * x0 + (1 - alpha) * x1
+
+
 class Problem:
     """
     Class for the mehcanics problem
@@ -76,6 +97,45 @@ class Problem:
         self.v_old = dolfin.Function(self.u_space)
         self.a_old = dolfin.Function(self.u_space)
 
+    def _acceleration_form(self, a, w):
+        return dolfin.inner(self.parameters["rho"] * a, w) * dolfin.dx
+
+    def _form(self, u, v, w):
+        F = dolfin.variable(dolfin.grad(u) + dolfin.Identity(3))
+        F_dot = dolfin.grad(v)
+        E_dot = dolfin.variable(0.5 * (F.T * F_dot + F_dot.T * F))
+        n = ufl.cofac(F) * self.N
+
+        return (
+            -dolfin.inner(self.parameters["p"] * dolfin.Identity(3) * n, w)
+            * self.ds(self.endo)
+            + (
+                dolfin.inner(
+                    dolfin.dot(self.parameters["alpha_epi"] * u, self.N)
+                    + dolfin.dot(self.parameters["beta_epi"] * v, self.N),
+                    dolfin.dot(w, self.N),
+                )
+            )
+            * self.ds(self.epi)
+            + (
+                dolfin.inner(
+                    self.parameters["alpha_top"] * u + self.parameters["beta_top"] * v,
+                    w,
+                )
+            )
+            * self.ds(self.top)
+            + dolfin.inner(
+                dolfin.diff(self.material.strain_energy(F), F),
+                dolfin.grad(w),
+            )
+            * dolfin.dx
+            + dolfin.inner(
+                F * dolfin.diff(self.material.W_visco(E_dot), E_dot),
+                F.T * dolfin.grad(w),
+            )
+            * dolfin.dx
+        )
+
     def v(
         self,
         as_vector: bool = False,
@@ -83,18 +143,13 @@ class Problem:
         r"""
         Velocity computed using the generalized
         :math:`alpha`-method
-
         .. math::
-
             v_{i+1} = v_i + (1-\gamma) \Delta t a_i + \gamma \Delta t a_{i+1}
-
-
         Parameters
         ----------
         as_vector : bool, optional
             Flag for saying whether to return the
             velocity as a function or a vector, by default False
-
         Returns
         -------
         typing.Union[dolfin.Function, dolfin.Vector]
@@ -119,18 +174,13 @@ class Problem:
         r"""
         Acceleration computed using the generalized
         :math:`alpha`-method
-
         .. math::
-
             a_{i+1} = \frac{u_{i+1} - (u_i + \Delta t v_i + (0.5 - \beta) \Delta t^2 a_i)}{\beta \Delta t^2}
-
-
         Parameters
         ----------
         as_vector : bool, optional
             Flag for saying whether to return the
             acceleration as a function or a vector, by default False
-
         Returns
         -------
         typing.Union[dolfin.Function, dolfin.Vector]
@@ -160,67 +210,45 @@ class Problem:
         self.a_old.vector()[:] = self.a(as_vector=True)
         self.u_old.vector()[:] = self.u.vector()
 
+    @property
+    def ds(self):
+        return dolfin.ds(domain=self.geometry.mesh, subdomain_data=self.geometry.ffun)
+
+    @property
+    def endo(self):
+        return self.geometry.markers["ENDO"][0]
+
+    @property
+    def epi(self):
+        return self.geometry.markers["EPI"][0]
+
+    @property
+    def top(self):
+        return self.geometry.markers["BASE"][0]
+
+    @property
+    def N(self):
+        return dolfin.FacetNormal(self.geometry.mesh)
+
     def _init_forms(self) -> None:
         """Initialize ufl forms"""
-        u = self.u
-        v = self.v()
-        a = self.a()
         w = self.u_test
-
-        ds = dolfin.ds(domain=self.geometry.mesh, subdomain_data=self.geometry.ffun)
-
-        F = dolfin.variable(dolfin.grad(u) + dolfin.Identity(3))
-        I = dolfin.Identity(3)  # noqa: E741
-        F_dot = dolfin.grad(v)
-        E_dot = dolfin.variable(0.5 * (F.T * F_dot + F_dot.T * F))
-
-        # Normal vectors
-        N = dolfin.FacetNormal(self.geometry.mesh)
-        n = ufl.cofac(F) * N
 
         # Markers
         if self.geometry.markers is None:
             raise RuntimeError("Missing markers in geometry")
-        endo = self.geometry.markers["ENDO"][0]
-        epi = self.geometry.markers["EPI"][0]
-        top = self.geometry.markers["BASE"][0]
 
-        internal_energy = self.material.strain_energy(F)
+        alpha_m = self.parameters["alpha_m"]
+        alpha_f = self.parameters["alpha_f"]
 
-        external_work = (
-            dolfin.inner(self.parameters["rho"] * a, w) * dolfin.dx
-            - dolfin.inner(self.parameters["p"] * I * n, w) * ds(endo)
-            + (
-                dolfin.inner(
-                    dolfin.dot(self.parameters["alpha_epi"] * u, N)
-                    + dolfin.dot(self.parameters["beta_epi"] * v, N),
-                    dolfin.dot(w, N),
-                )
-            )
-            * ds(epi)
-            + (
-                dolfin.inner(
-                    self.parameters["alpha_top"] * u + self.parameters["beta_top"] * v,
-                    w,
-                )
-            )
-            * ds(top)
-            + dolfin.inner(
-                F * dolfin.diff(self.material.W_visco(E_dot), E_dot),
-                F.T * dolfin.grad(w),
-            )
-            * dolfin.dx
+        self._virtual_work = self._acceleration_form(
+            interpolate(self.a_old, self.a(), alpha_m),
+            w,
+        ) + self._form(
+            interpolate(self.u_old, self.u, alpha_f),
+            interpolate(self.v_old, self.v(), alpha_f),
+            w,
         )
-
-        self._virtual_work = (
-            dolfin.derivative(
-                internal_energy * dolfin.dx,
-                self.u,
-                self.u_test,
-            )
-            + external_work
-        )
-
         self._jacobian = dolfin.derivative(
             self._virtual_work,
             self.u,
@@ -266,7 +294,6 @@ class Problem:
 
     def solve(self) -> bool:
         """Solve the system"""
-
         _, conv = self.solver.solve()
 
         if not conv:

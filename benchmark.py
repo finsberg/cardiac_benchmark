@@ -107,9 +107,13 @@ def main():
 
     tau = dolfin.Constant(0.0)
     dt = 0.001
-    time = np.arange(0, 1, dt)
+    parameters = Problem.default_parameters()
+    time = np.arange(dt, 1, dt)
     plot_activation_function(t=time)
-    _, act = activation_function((0, 1), t_eval=time)
+    _, act = activation_function(
+        (0, 1),
+        t_eval=time - float(parameters["alpha_f"]) * dt,
+    )
 
     material = HolzapfelOgden(f0=geo.f0, n0=geo.n0, tau=tau)
 
