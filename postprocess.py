@@ -147,6 +147,72 @@ class DataLoader:
             vols.append(self._volume_at_timepoint(u))
         return np.array(vols)
 
+    def compare_results(
+        self,
+        disp_path="cardiac_benchmark/2021_10_29/results/displacement_vs_time.npz",
+        vol_path="cardiac_benchmark/2021_10_29/results/volume_vs_time.npz",
+    ):
+        """Compare results with provided results for
+        compononentwise displacement and volumes
+
+        Parameters
+        ----------
+        disp_path : str
+            Path to file containing results for
+            component-wise displacements
+        vol_path : str
+            Path to file containing results for
+            volume
+
+        Raises
+        ------
+        FileNotFoundError
+            If any of the files are not found
+        """
+
+        # Displacements
+        disp_path = Path(disp_path)
+        if not disp_path.is_file():
+            raise FileNotFoundError(f"Cannot find file {disp_path}")
+        results_disp = np.load(disp_path, allow_pickle=True)
+        time_stamps_cmp = results_disp["times.npy"]
+        results_disp_dict = results_disp["disp_dict.npy"].item()
+        up0_cmp = np.array(list(results_disp_dict["top"].values())).T
+        up1_cmp = np.array(list(results_disp_dict["middle"].values())).T
+
+        # Volumes
+        vol_path = Path(vol_path)
+        if not vol_path.is_file():
+            raise FileNotFoundError(f"Cannot find file {vol_path}")
+        volumes_cmp = np.load(vol_path, allow_pickle=True)["vol_lst.npy"]
+
+        p0 = (0.025, 0.03, 0)
+        p1 = (0, 0.03, 0)
+        vols = []
+        up0 = []
+        up1 = []
+        for t in self.time_stamps:
+            print(f"Time {t}", end="\r")
+            u = self.get(t)
+            up0.append(u(p0))
+            up1.append(u(p1))
+            vols.append(self._volume_at_timepoint(u))
+
+        plot_componentwise_displacement_comparison(
+            up0=np.array(up0),
+            up1=np.array(up1),
+            time_stamps=self.time_stamps,
+            up0_cmp=up0_cmp,
+            up1_cmp=up1_cmp,
+            time_stamps_cmp=time_stamps_cmp,
+        )
+        plot_volume_comparison(
+            volumes=vols,
+            time_stamps=self.time_stamps,
+            volumes_cmp=volumes_cmp,
+            time_stamps_cmp=time_stamps_cmp,
+        )
+
     def postprocess_all(self):
         xdmf = dolfin.XDMFFile(self.geometry.mesh.mpi_comm(), "u.xdmf")
         p0 = (0.025, 0.03, 0)
@@ -198,7 +264,79 @@ def plot_componentwise_displacement(
     for axi in ax:
         axi.legend()
         axi.grid()
-    fig.savefig(fname)
+    fig.savefig(fname, dpi=300)
+
+
+def plot_componentwise_displacement_comparison(
+    up0,
+    up1,
+    time_stamps,
+    up0_cmp,
+    up1_cmp,
+    time_stamps_cmp,
+    fname="componentwise_displacement_comparison.png",
+):
+    fname = Path(fname).with_suffix(".png")
+
+    basefname = fname.with_suffix("").as_posix()
+    np.save(Path(basefname + "_up0").with_suffix(".npy"), up0)
+    np.save(Path(basefname + "_up1").with_suffix(".npy"), up1)
+
+    fig, ax = plt.subplots(2, 2, sharex=True)
+    ax[0, 0].plot(time_stamps, up0[:, 0], label="x")
+    ax[0, 0].plot(time_stamps, up0[:, 1], label="y")
+    ax[0, 0].plot(time_stamps, up0[:, 2], label="z")
+    ax[0, 0].plot(time_stamps_cmp, up0_cmp[:, 0], linestyle="--", label="x (cmp)")
+    ax[0, 0].plot(time_stamps_cmp, up0_cmp[:, 1], linestyle="--", label="y (cmp)")
+    ax[0, 0].plot(time_stamps_cmp, up0_cmp[:, 2], linestyle="--", label="z (cmp)")
+    ax[0, 0].set_title("$u(p_0)$[m]")
+
+    ax[1, 0].plot(
+        time_stamps,
+        up0[:, 0] - np.interp(time_stamps, time_stamps_cmp, up0_cmp[:, 0]),
+        label="x - x (cmp)",
+    )
+    ax[1, 0].plot(
+        time_stamps,
+        up0[:, 1] - np.interp(time_stamps, time_stamps_cmp, up0_cmp[:, 1]),
+        label="y - y (cmp)",
+    )
+    ax[1, 0].plot(
+        time_stamps,
+        up0[:, 2] - np.interp(time_stamps, time_stamps_cmp, up0_cmp[:, 2]),
+        label="z - z (cmp)",
+    )
+    ax[1, 0].set_xlabel("Time [s]")
+
+    ax[0, 1].plot(time_stamps, up1[:, 0], label="x")
+    ax[0, 1].plot(time_stamps, up1[:, 1], label="y")
+    ax[0, 1].plot(time_stamps, up1[:, 2], label="z")
+    ax[0, 1].plot(time_stamps_cmp, up1_cmp[:, 0], linestyle="--", label="x (cmp)")
+    ax[0, 1].plot(time_stamps_cmp, up1_cmp[:, 1], linestyle="--", label="y (cmp)")
+    ax[0, 1].plot(time_stamps_cmp, up1_cmp[:, 2], linestyle="--", label="z (cmp)")
+    ax[0, 1].set_title("$u(p_1)$[m]")
+
+    ax[1, 1].plot(
+        time_stamps,
+        up1[:, 0] - np.interp(time_stamps, time_stamps_cmp, up1_cmp[:, 0]),
+        label="x - x (cmp)",
+    )
+    ax[1, 1].plot(
+        time_stamps,
+        up1[:, 1] - np.interp(time_stamps, time_stamps_cmp, up1_cmp[:, 1]),
+        label="y - y (cmp)",
+    )
+    ax[1, 1].plot(
+        time_stamps,
+        up1[:, 2] - np.interp(time_stamps, time_stamps_cmp, up1_cmp[:, 2]),
+        label="z - z (cmp)",
+    )
+
+    for axi in ax.flatten():
+        axi.legend()
+        axi.grid()
+    fig.tight_layout()
+    fig.savefig(fname, dpi=300)
 
 
 def plot_volume(volumes, time_stamps, fname="volume.png"):
@@ -207,9 +345,38 @@ def plot_volume(volumes, time_stamps, fname="volume.png"):
     np.save(Path(basefname + "_volumes").with_suffix(".npy"), volumes)
 
     fig, ax = plt.subplots()
-    ax.plot(time_stamps, volumes)
+    ax.plot(time_stamps, volumes, label="volume")
     ax.set_ylabel("Volume [m^3]")
     ax.set_xlabel("Time [s]")
     ax.grid()
+    ax.legend()
     ax.set_title("Volume throug time")
-    fig.savefig(fname)
+    fig.savefig(fname, dpi=300)
+
+
+def plot_volume_comparison(
+    volumes,
+    time_stamps,
+    volumes_cmp=None,
+    time_stamps_cmp=None,
+    fname="volume_comparison.png",
+):
+    fname = Path(fname).with_suffix(".png")
+    basefname = fname.with_suffix("").as_posix()
+    np.save(Path(basefname + "_volumes").with_suffix(".npy"), volumes)
+
+    fig, ax = plt.subplots(2, 1, sharex=True)
+    ax[0].plot(time_stamps, volumes, label="volume")
+    ax[0].plot(time_stamps_cmp, volumes_cmp, label="volume (cmp)")
+    ax[1].plot(
+        time_stamps,
+        volumes - np.interp(time_stamps, time_stamps_cmp, volumes_cmp),
+        label="volume - volume (cmp)",
+    )
+    ax[0].set_ylabel("Volume [m^3]")
+    ax[1].set_xlabel("Time [s]")
+    for axi in ax:
+        axi.grid()
+        axi.legend()
+    ax[0].set_title("Volume throug time")
+    fig.savefig(fname, dpi=300)
