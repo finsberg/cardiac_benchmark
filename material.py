@@ -3,26 +3,21 @@ import typing
 import dolfin
 
 
-def subplus(x):
-    r"""
-    Ramp function
-
-    .. math::
-       \max\{x,0\}
-    """
-
-    return dolfin.conditional(dolfin.ge(x, 0.0), x, 0.0)
-
-
-def heaviside(x):
+def heaviside(x, k=100):
     r"""
     Heaviside function
 
     .. math::
        \frac{\mathrm{d}}{\mathrm{d}x} \max\{x,0\}
+
+    or
+
+    .. math::
+        \frac{1}{1 + e^{-k (x - 1)}}
     """
 
-    return dolfin.conditional(dolfin.ge(x, 0.0), 1.0, 0.0)
+    # return dolfin.conditional(dolfin.ge(x, 0.0), 1.0, 0.0)
+    return 1 / (1 + dolfin.exp(-k * (x - 1)))
 
 
 def I1(F):
@@ -71,64 +66,27 @@ class HolzapfelOgden:
             "eta": dolfin.Constant(1e2),
         }
 
-    def W_1(self, I1, diff=0, *args, **kwargs):
+    def W_1(self, I1):
         a = self.parameters["a"]
         b = self.parameters["b"]
 
-        if diff == 0:
-            if float(a) > dolfin.DOLFIN_EPS:
-                if float(b) > dolfin.DOLFIN_EPS:
-                    return a / (2.0 * b) * (dolfin.exp(b * (I1 - 3)) - 1.0)
-                else:
-                    return a / 2.0 * (I1 - 3)
-            else:
-                return 0.0
-        elif diff == 1:
-            return a / 2.0 * dolfin.exp(b * (I1 - 3))
-        elif diff == 2:
-            return a * b / 2.0 * dolfin.exp(b * (I1 - 3))
+        return a / (2.0 * b) * (dolfin.exp(b * (I1 - 3)) - 1.0)
 
-    def W_4(self, I4, direction, diff=0):
+    def W_4(self, I4, direction):
         assert direction in ["f", "n"]
         a = self.parameters[f"a_{direction}"]
         b = self.parameters[f"b_{direction}"]
 
-        if I4 == 0:
-            return 0
+        return a / (2.0 * b) * heaviside(I4) * (dolfin.exp(b * (I4 - 1) ** 2) - 1.0)
 
-        if diff == 0:
-            if float(a) > dolfin.DOLFIN_EPS:
-                if float(b) > dolfin.DOLFIN_EPS:
-                    return a / (2.0 * b) * (dolfin.exp(b * subplus(I4 - 1) ** 2) - 1.0)
-                else:
-                    return a / 2.0 * subplus(I4 - 1) ** 2
-            else:
-                return 0.0
-
-        elif diff == 1:
-            return a * subplus(I4 - 1) * dolfin.exp(b * pow(I4 - 1, 2))
-        elif diff == 2:
-            return (
-                a
-                * heaviside(I4 - 1)
-                * (1 + 2.0 * b * pow(I4 - 1, 2))
-                * dolfin.exp(b * pow(I4 - 1, 2))
-            )
-
-    def W_8(self, I8, *args, **kwargs):
+    def W_8(self, I8):
         """
         Cross fiber-sheet contribution.
         """
         a = self.parameters["a_fn"]
         b = self.parameters["b_fn"]
 
-        if float(a) > dolfin.DOLFIN_EPS:
-            if float(b) > dolfin.DOLFIN_EPS:
-                return a / (2.0 * b) * (dolfin.exp(b * I8 ** 2) - 1.0)
-            else:
-                return a / 2.0 * I8 ** 2
-        else:
-            return 0.0
+        return a / (2.0 * b) * (dolfin.exp(b * I8 ** 2) - 1.0)
 
     def W_compress(self, J):
         """
@@ -140,9 +98,7 @@ class HolzapfelOgden:
         """Viscoelastic contributions"""
         return 0.5 * self.parameters["eta"] * dolfin.tr(E_dot * E_dot)
 
-    def Wactive(self, I4f, diff=0):
-        if diff == 1:
-            return self.tau
+    def Wactive(self, I4f):
         return dolfin.Constant(0.5) * self.tau * (I4f - 1)
 
     def strain_energy(self, F):
@@ -162,12 +118,12 @@ class HolzapfelOgden:
         Wcompress = self.W_compress(J)
 
         # Active stress
-        Wactive = self.Wactive(I4f, diff=0)
+        Wactive = self.Wactive(I4f)
 
-        W1 = self.W_1(I1, diff=0)
-        W4f = self.W_4(I4f, "f", diff=0)
-        W4s = self.W_4(I4s, "n", diff=0)
-        W8fs = self.W_8(I8fs, diff=0)
+        W1 = self.W_1(I1)
+        W4f = self.W_4(I4f, "f")
+        W4s = self.W_4(I4s, "n")
+        W8fs = self.W_8(I8fs)
 
         W = W1 + W4f + W4s + W8fs + Wcompress + Wactive
         return W

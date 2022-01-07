@@ -108,6 +108,11 @@ def main():
     tau = dolfin.Constant(0.0)
     dt = 0.001
     parameters = Problem.default_parameters()
+
+    # Newmark beta method
+    parameters["alpha_m"] = 0
+    parameters["alpha_f"] = 0
+
     time = np.arange(dt, 1, dt)
     plot_activation_function(t=time)
     _, act = activation_function(
