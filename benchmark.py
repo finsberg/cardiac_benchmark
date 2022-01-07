@@ -110,8 +110,8 @@ def main():
     parameters = Problem.default_parameters()
 
     # Newmark beta method
-    parameters["alpha_m"] = 0
-    parameters["alpha_f"] = 0
+    # parameters["alpha_m"] = dolfin.Constant(0.0)
+    # parameters["alpha_f"] = dolfin.Constant(0.0)
 
     time = np.arange(dt, 1, dt)
     plot_activation_function(t=time)
@@ -126,6 +126,7 @@ def main():
         geometry=geo,
         material=material,
         function_space="P_1",
+        parameters=parameters,
     )
 
     problem.parameters["dt"].assign(dt)
@@ -140,6 +141,7 @@ def main():
 def postprocess():
     loader = DataLoader("results.h5")
     loader.postprocess_all()
+    loader.compare_results()
 
 
 if __name__ == "__main__":
