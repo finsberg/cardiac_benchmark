@@ -133,7 +133,10 @@ class DataLoader:
         X = dolfin.SpatialCoordinate(self.geometry.mesh) - self._shift
         N = dolfin.FacetNormal(self.geometry.mesh)
         F = dolfin.grad(u) + dolfin.Identity(3)
-        return (-1.0 / 3.0) * dolfin.dot(X + u, ufl.cofac(F) * N)
+
+        u1 = ufl.as_vector([0.0, u[1], 0.0])
+        X1 = ufl.as_vector([0.0, X[1], 0.0])
+        return (-1.0 / 1.0) * dolfin.dot(X1 + u1, ufl.cofac(F) * N)
 
     def _volume_at_timepoint(self, u):
         return dolfin.assemble(self._volume_form(u) * self.ds)
@@ -188,6 +191,7 @@ class DataLoader:
 
         p0 = (0.025, 0.03, 0)
         p1 = (0, 0.03, 0)
+
         vols = []
         up0 = []
         up1 = []
@@ -217,6 +221,13 @@ class DataLoader:
         xdmf = dolfin.XDMFFile(self.geometry.mesh.mpi_comm(), "u.xdmf")
         p0 = (0.025, 0.03, 0)
         p1 = (0, 0.03, 0)
+
+        #p0 = (0.02647058823529411, -1.463099651233471e-18, -0.02389423060187047)
+        #p1 = (0.02647058823529411, 4.389298953700411e-18, 0.02389423060187047)
+        #p2 = (0.02647058823529411, 0, 0)
+        #p3 = (0.02647058823529411, 0.02389423060187047, -2.926199302466941e-18)
+
+
         vols = []
         up0 = []
         up1 = []
@@ -234,6 +245,7 @@ class DataLoader:
             up1=np.array(up1),
             time_stamps=self.time_stamps,
         )
+
         plot_volume(volumes=vols, time_stamps=self.time_stamps)
 
 
@@ -380,3 +392,9 @@ def plot_volume_comparison(
         axi.legend()
     ax[0].set_title("Volume throug time")
     fig.savefig(fname, dpi=300)
+
+
+if __name__ == "__main__":
+    loader = DataLoader("results.h5")
+    loader.postprocess_all()
+    loader.compare_results()
