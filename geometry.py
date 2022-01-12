@@ -118,6 +118,7 @@ def create_benchmark_ellipsoid_mesh_gmsh(
     mu_base_endo=-math.acos(5 / 17),
     mu_apex_epi=-math.pi,
     mu_base_epi=-math.acos(5 / 20),
+    mesh_size_factor=1.0,
 ):
 
     gmsh.initialize()
@@ -126,6 +127,7 @@ def create_benchmark_ellipsoid_mesh_gmsh(
     gmsh.option.setNumber("Mesh.OptimizeNetgen", 1)
     gmsh.option.setNumber("Mesh.ElementOrder", 1)
     gmsh.option.setNumber("Mesh.HighOrderOptimize", 1)  # I don't think we need this?
+    gmsh.option.setNumber("Mesh.MeshSizeFactor", mesh_size_factor)
 
     def ellipsoid_point(mu, theta, r_long, r_short, psize):
         return gmsh.model.geo.addPoint(
@@ -390,6 +392,7 @@ class EllipsoidGeometry:
             mu_base_endo=-math.acos(5 / 17),
             mu_apex_epi=-math.pi,
             mu_base_epi=-math.acos(5 / 20),
+            mesh_size_factor=1.0,
         )
 
     @staticmethod
@@ -399,3 +402,8 @@ class EllipsoidGeometry:
             alpha_endo=-60.0,
             alpha_epi=+60.0,
         )
+
+
+if __name__ == "__main__":
+    geo = EllipsoidGeometry.from_parameters(mesh_params={"mesh_size_factor": 2.0})
+    dolfin.File("coarse_mesh.pvd") << geo.mesh
