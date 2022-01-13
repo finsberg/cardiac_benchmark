@@ -63,7 +63,7 @@ class Problem:
             The material
         parameters : typing.Dict[str, dolfin.Constant], optional
             Problem parameters, by default None. See
-            `Problem.default_parmaeters`
+            `Problem.default_parameters`
         function_space : str, optional
             A string of the form `"{family}_{degree}` representing
             the function space for the displacement, by default "P_2"
@@ -282,14 +282,14 @@ class Problem:
 
     @property
     def _gamma(self) -> dolfin.Constant:
-        """Parmameter in the generalized alpha-method"""
+        """Parameter in the generalized alpha-method"""
         return dolfin.Constant(
             0.5 + self.parameters["alpha_f"] - self.parameters["alpha_m"],
         )
 
     @property
     def _beta(self) -> dolfin.Constant:
-        """Parmameter in the generalized alpha-method"""
+        """Parameter in the generalized alpha-method"""
         return dolfin.Constant((self._gamma + 0.5) ** 2 / 4.0)
 
     def solve(self) -> bool:

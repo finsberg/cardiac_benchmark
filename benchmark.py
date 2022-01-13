@@ -106,12 +106,12 @@ def main():
     geo = get_geometry()
 
     tau = dolfin.Constant(0.0)
-    dt = 0.001
+    dt = 0.0001
     parameters = Problem.default_parameters()
 
     # Newmark beta method
-    # parameters["alpha_m"] = dolfin.Constant(0.0)
-    # parameters["alpha_f"] = dolfin.Constant(0.0)
+    parameters["alpha_m"] = dolfin.Constant(0.0)
+    parameters["alpha_f"] = dolfin.Constant(0.0)
 
     time = np.arange(dt, 1, dt)
     plot_activation_function(t=time)

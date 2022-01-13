@@ -121,6 +121,6 @@ class NonlinearSolver:
         num_iterations = self._snes.getLinearSolveIterations()
         print(f"Iterations    : {num_iterations}")
         if num_iterations > 0:
-            print(f"Resiudal      : {residuals[-1]}")
+            print(f"Residual      : {residuals[-1]}")
 
         return num_iterations, self._snes.converged
