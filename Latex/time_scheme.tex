@@ -86,8 +86,8 @@ and yield a non-linear weak form with $u_{i+1}$ as the only unknown. However, th
 resulting form becomes fairly complex, and we avoid this task by implementing \eqref{weak2} and
 \eqref{N_v}--\eqref{N_a} directly as UFL forms in the code, and leave the algebra to UFL.}
 
-A common choice is $\alpha=1/2, \beta=1/4$, which yields
-the \emph{average constant acceleration (middle point rule)} method, while $\alpha=1/2, \beta=1/6$
+A common choice is $\gamma=1/2, \beta=1/4$, which yields
+the \emph{average constant acceleration (middle point rule)} method, while $\gamma=1/2, \beta=1/6$
 yields the \emph{linear acceleration method} where the acceleration is linearly varying between
 $t$ and $t+\Delta t$. Both methods are unconditionally stable and second order accurate, but
 they introduce no numerical damping and can suffer from spurious oscillations. Choosing $\gamma > 1/2$
@@ -107,7 +107,7 @@ material, it may seem counter-intuitive that a dissipative scheme is needed for 
   \begin{center}
     \begin{tabular}{|r|r|l|}
       \hline
-      $\alpha$ & $\beta $& Result \\
+      $\gamma$ & $\beta $& Result \\
       \hline \hline
       1/2 & 1/4 &  Diverges for $\Delta t = 0.01, 0.001$ \\ \hline
       1/2 & 1/6 &  Diverges for $\Delta t = 0.01, 0.001$ \\ \hline
