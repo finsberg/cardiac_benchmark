@@ -12,49 +12,51 @@
 \newcommand{\R}{\mathbb{R}}
 \newcommand{\foralls}{\forall\,}
 \newcommand{\ddt}[1]{{#1}_t}
+\newcommand{\dif}{\mathop{}\!\mathrm{d}}
 \newcommand{\dx}{\dif{}x}
+\newcommand{\dX}{\dif{}X}
 \newcommand{\ds}{\dif{}s}
 \newcommand{\dS}{\dif{}S}
 
 \begin{document}
 
 We want to solve a dynamic version of the cardiac mechanics equations, including the
-inertia term that is usually neglected. The boudnary conditions are as follows:
+inertia term that is usually neglected. The boundary conditions are as follows:
 \begin{itemize}
-\item A standard pressure term on the endocardium ($\Gamma_{endo}$)
-\item Normal forces on the epicardium ($\Gamma_{endo}$) are a combination of a linear spring
-and linear friction
-\item Zero tangent force on the epicardium
-\item The traction (tangent + normal) on the base ($\Gamma_{top}$) is the sum of
+\item a standard pressure term on the endocardium ($\Gamma_{\rm endo}$);
+\item normal forces on the epicardium ($\Gamma_{\rm epi}$) are a combination of a linear spring
+and linear friction;
+\item zero tangent force on the epicardium; and
+\item the traction (tangent + normal) on the base ($\Gamma_{\rm top}$) is the sum of
 a linear spring and linear friction.
 \end{itemize}
 In the benchmark description, the equations are written as
 \begin{align*}
   \rho \ddot{u} - \nabla\cdot(J\sigma F^{-T}) &= 0, \mbox{ in } \Omega ,\\
-  \sigma J F^{-T}N &= pJF^{-TN}, \mbox{ on } \Gamma_{endo}, \\
-  \sigma JF^{-T}N\cdot N + \alpha{epi}u\cdot N + \beta_{epi}\dot{u}\cdot N &= 0, \mbox{ on }  \Gamma_{epi}, \\
-  \sigma JF^{-T}N\times N &=0, \mbox{ on }  \Gamma_{epi}, \\
-  \sigma JF^{-T}N + \alpha_{top}u + \beta_{top}\dot{u} &= 0, \mbox{ on } \Gamma_{top},
+  \sigma J F^{-T}N &= pJF^{-T}N, \mbox{ on } \Gamma_{\rm endo}, \\
+  \sigma JF^{-T}N\cdot N + \alpha_{\rm epi}u\cdot N + \beta_{\rm epi}\dot{u}\cdot N &= 0, \mbox{ on }  \Gamma_{\rm epi}, \\
+  \sigma JF^{-T}N\times N &=0, \mbox{ on }  \Gamma_{\rm epi}, \\
+  \sigma JF^{-T}N + \alpha_{\rm top}u + \beta_{\rm top}\dot{u} &= 0, \mbox{ on } \Gamma_{\rm top},
 \end{align*}
 where we have used the notation $\sigma$ for the Cauchy stress to be more in line with standard notation.
 
 In terms of the first Piola-Kirchhoff stress, given by $P = J\sigma F^{-T}$, the problem reads
 \begin{align}
   \rho \ddot{u} - \nabla\cdot P &= 0, \mbox{ in } \Omega ,\label{dyn_eq0}\\
-  PN &= pJF^{-TN}, \mbox{ on } \Gamma_{endo}, \\
-  PN\cdot N + \alpha_{epi}u\cdot N + \beta_{epi}\dot{u}\cdot N &= 0, \mbox{ on }  \Gamma_{epi}, \\
-  PN\times N &=0, \mbox{ on }  \Gamma_{epi}, \\
-  PN + \alpha_{top}u + \beta_{top}\dot{u} &= 0, \mbox{ on } \Gamma_{top}.\label{dyn_bc3}
+  PN &= pJF^{-T}N, \mbox{ on } \Gamma_{\rm endo}, \\
+  PN\cdot N + \alpha_{\rm epi}u\cdot N + \beta_{\rm epi}\dot{u}\cdot N &= 0, \mbox{ on }  \Gamma_{\rm epi}, \\
+  PN\times N &=0, \mbox{ on }  \Gamma_{\rm epi}, \\
+  PN + \alpha_{\rm top}u + \beta_{\rm top}\dot{u} &= 0, \mbox{ on } \Gamma_{\rm top}.\label{dyn_bc3}
 \end{align}
 
 If we introduce the notation $a= \ddot{u}, v=\dot{u}$
 for the acceleration and velocity, respectively, a weak form
-of \eqref{dyn_eq0}-\eqref{dyn_bc3} can be written as
+of \eqref{dyn_eq0}--\eqref{dyn_bc3} can be written as
 \begin{equation}
 \begin{aligned}
-\int_{\Omega} \rho a \cdot w \, dX + \int_{\Omega} P:Grad(w) \, dX -\int_{\Gamma_{endo}} p I JF^{-T}N \cdot w \, dS  \\
-+\int_{\Gamma_{epi}} \big(\alpha_{epi} u \cdot N + \beta_{epi} v \cdot N \big) w \cdot N \, dS  \\
-+\int_{\Gamma_{top}} \alpha_{top} u \cdot w + \beta_{top} v \cdot w \, dS = 0 \quad \forall w \in H^1(\Omega).
+\int_{\Omega} \rho a \cdot w \, \dX + \int_{\Omega} P:Grad(w) \, \dX -\int_{\Gamma_{\rm endo}} p I JF^{-T}N \cdot w \, \dS  \\
++\int_{\Gamma_{\rm epi}} \big(\alpha_{\rm epi} u \cdot N + \beta_{\rm epi} v \cdot N \big) w \cdot N \, \dS  \\
++\int_{\Gamma_{\rm top}} \alpha_{\rm top} u \cdot w + \beta_{\rm top} v \cdot w \, \dS = 0 \quad \forall w \in H^1(\Omega).
 \end{aligned}\label{weak1}
 \end{equation}
 In order to integrate \eqref{weak1} in time, we need to express $a$ and $v$ in
@@ -66,23 +68,23 @@ which will be discussed below.
 A popular method for time integration is the Newmark $\beta$ scheme,
 which gives $a,v$ as
 \begin{align}
-v_{i+1} &= v_i + (1-\gamma) \Delta t a_i + \gamma \Delta t a_{i+1}, \label{N_v}\\
-a_{i+1} &= \frac{u_{i+1} - (u_i + \Delta t v_i + (0.5 - \beta) \Delta t^2 a_i)}{\beta \Delta t^2}, \label{N_a}
+v_{i+1} &= v_i + (1-\gamma) \Delta t ~ a_i + \gamma \Delta t ~ a_{i+1}, \label{N_v}\\
+a_{i+1} &= \frac{u_{i+1} - (u_i + \Delta t ~ v_i + (0.5 - \beta) \Delta t^2 ~ a_i)}{\beta \Delta t^2}, \label{N_a}
 \end{align}
 Inserting these expressions into \eqref{weak1} and assuming $u_i,v_i,a_i$ known,
 we obtain the time discrete weak form
 \begin{equation}
 \begin{aligned}
-\int_{\Omega} \rho a_{i+1} \cdot w \, dX + \int_{\Omega} P(u_{i+1},v_{i+1}):Grad(w) \, dX -\int_{\Gamma_{endo}} p I JF_{i+1}^{-T}N \cdot w \, dS  \\
-+\int_{\Gamma_{epi}} \big(\alpha_{epi} u_{i+1} \cdot N + \beta_{epi} v_{i+1} \cdot N \big) w \cdot N \, dS  \\
-+\int_{\Gamma_{top}} \alpha_{top} u_{i+1} \cdot w + \beta_{top} v_{i+1} \cdot w \, dS = 0 \quad \forall w \in H^1(\Omega),
+\int_{\Omega} \rho a_{i+1} \cdot w \, \dX + \int_{\Omega} P(u_{i+1},v_{i+1}):Grad(w) \, \dX -\int_{\Gamma_{\rm endo}} p I JF_{i+1}^{-T}N \cdot w \, \dS  \\
++\int_{\Gamma_{\rm epi}} \big(\alpha_{\rm epi} u_{i+1} \cdot N + \beta_{\rm epi} v_{i+1} \cdot N \big) w \cdot N \, \dS  \\
++\int_{\Gamma_{\rm top}} \alpha_{\rm top} u_{i+1} \cdot w + \beta_{\rm top} v_{i+1} \cdot w \, \dS = 0 \quad \forall w \in H^1(\Omega),
 \end{aligned}\label{weak2}
 \end{equation}
 where $F_{i+1} = I + \nabla u_{i+1}$ and $v_i,a_i$ are given by
-\eqref{N_v}-\eqref{N_a}.\footnote{We could insert these expressions into \eqref{weak2} to eliminate $v_i,a_i$
+\eqref{N_v}--\eqref{N_a}.\footnote{We could insert these expressions into \eqref{weak2} to eliminate $v_i,a_i$
 and yield a non-linear weak form with $u_{i+1}$ as the only unknown. However, the
 resulting form becomes fairly complex, and we avoid this task by implementing \eqref{weak2} and
-\eqref{N_v}-\eqref{N_a} directly as UFL forms in the code, and leave the algebra to UFL.}
+\eqref{N_v}--\eqref{N_a} directly as UFL forms in the code, and leave the algebra to UFL.}
 
 A common choice is $\alpha=1/2, \beta=1/4$, which yields
 the \emph{average constant acceleration (middle point rule)} method, while $\alpha=1/2, \beta=1/6$
@@ -125,15 +127,15 @@ oscillations sometimes seen in the Newmark method for $\gamma =1/2$, while retai
 the second order convergence in $\Delta t$. One class of such methods is called
 the generalized $\alpha$ or G-$\alpha$ methods, which introduce additional parameters
 $\alpha_f$ and $\alpha_m$. The methods use the Newmark approximations in
-\eqref{N_v}-\eqref{N_a} to approximate $v,a$, but evaluate the terms of the
+\eqref{N_v}--\eqref{N_a} to approximate $v$ and $a$, but evaluate the terms of the
 weak form at times $t_{i+1}-\Delta t\alpha_m$ and  $t_{i+1}-\Delta t\alpha_f$.
 Specifically, the inertia term is evaluated at $t_{i+1}-\Delta t\alpha_m$, and the
 other terms at $t_{i+1}-\Delta t\alpha_f$. The weak form becomes
 \begin{equation}
 \begin{aligned}
-\int_{\Omega} \rho a_{i+1-\alpha_m} \cdot w \, dX + \int_{\Omega} P_{i+1-\alpha_f}:Grad(w) \, dX -\int_{\Gamma_{endo}} p I JF_{i+1-\alpha_f}^{-T}N \cdot w \, dS  \\
-+\int_{\Gamma_{epi}} \big(\alpha_{epi} u_{i+1-\alpha_f} \cdot N + \beta_{epi} v_{i+1-\alpha_f} \cdot N \big) w \cdot N \, dS  \\
-+\int_{\Gamma_{top}} \alpha_{top} u_{i+1-\alpha_f} \cdot w + \beta_{top} v_{i+1-\alpha_f} \cdot w \, dS = 0 \quad \forall w \in H^1(\Omega),
+\int_{\Omega} \rho a_{i+1-\alpha_m} \cdot w \, \dX + \int_{\Omega} P_{i+1-\alpha_f}:Grad(w) \, \dX -\int_{\Gamma_{\rm endo}} p I JF_{i+1-\alpha_f}^{-T}N \cdot w \, dS  \\
++\int_{\Gamma_{\rm epi}} \big(\alpha_{\rm epi} u_{i+1-\alpha_f} \cdot N + \beta_{\rm epi} v_{i+1-\alpha_f} \cdot N \big) w \cdot N \, dS  \\
++\int_{\Gamma_{\rm top}} \alpha_{\rm top} u_{i+1-\alpha_f} \cdot w + \beta_{\rm top} v_{i+1-\alpha_f} \cdot w \, dS = 0 \quad \forall w \in H^1(\Omega),
 \end{aligned}\label{weak3}
 \end{equation}
 with
@@ -142,16 +144,16 @@ with
   v_{i+1-\alpha_f} &= (1-\alpha_f)v_{i+1}-\alpha_f v_i, \\
   a_{i+1-\alpha_m} &= (1-\alpha_m)a_{i+1}-\alpha_m a_i,
 \end{align*}
-$v_{i+1},a_{i+1}$ given by \eqref{N_v}-\eqref{N_a}, and
+$v_{i+1},a_{i+1}$ given by \eqref{N_v}--\eqref{N_a}, and
 \begin{align*}
-F_{i+1-\alpha_f} &= I + \nabla u_{i+1-\alpha_f} ,
+F_{i+1-\alpha_f} &= I + \nabla u_{i+1-\alpha_f}, \\
 P_{i+1-\alpha_f} &= P(u_{i+1-\alpha_f}, v_{i+1-\alpha_f}).
 \end{align*}
 The only difference between \eqref{weak3} and \eqref{weak2} is the time point at which the
 terms of the equation are evaluated.
 
 Different choices of the four parameters $\alpha_m, \alpha_f, \beta, \gamma$ yield
-methods with different accuracy and stability properties. Tables 1-3 in \cite{erlicher2002analysis}
+methods with different accuracy and stability properties. Tables 1--3 in \cite{erlicher2002analysis}
 provides an overview of parameter choices for methods in the literature,
 as well as conditions for stability and convergence.
 We have used the choice $\alpha_m =0.2, \alpha_f=0.4$, and
@@ -176,7 +178,7 @@ the convergence is second order.
  These alternatives have not yet been explored.
 
  \item So far, we have implemented the weak form \eqref{weak3} and the relations
- \eqref{N_v}-\eqref{N_a} directly, and relied on UFL to handle the algebra to turn it
+ \eqref{N_v}--\eqref{N_a} directly, and relied on UFL to handle the algebra to turn it
  into a problem with $u_{i+1}$ as the only unknown. This seems to work well, but
  there are alternatives. For instance, Eq. (14) in \cite{erlicher2002analysis} is
  a relatively compact equation for $u_{i+1}$ based on the G-$\alpha$ method. It should
@@ -189,19 +191,18 @@ the convergence is second order.
 \section{The Newmark $\beta$ scheme}
 We consider first a general dynamic equation on the form
 \[
-M\ddot{u} + C\dot{u} + f^{int}(u) = f_{ext},
+M\ddot{u} + C\dot{u} + f^{\rm int}(u) = f_{\rm ext},
 \]
-where $M$ is the mass matric, $C$ is the damping matrix, and $f^{int}, f^{ext}$
+where $M$ is the mass matrix, $C$ is the damping matrix, and $f^{\rm int}, f^{\rm ext}$
 are internal and external forces. Note that the mechanics equation above can also
 be written on this general form, since the stress tensor $P$ includes a viscous
 component which is a linear function of the velocity $\dot{u}$.
 
-The Newmark $\beta$ method
-is then commonly written as
+The Newmark $\beta$ method is then commonly written as
 \begin{align}
-v_{i+1} &= v_i + (1-\gamma) \Delta t a_i + \gamma \Delta t a_{i+1}, \\
-a_{i+1} &= \frac{u_{i+1} - (u_i + \Delta t v_i + (0.5 - \beta) \Delta t^2 a_i)}{\beta \Delta t^2}, \\
-Ma_{i+1} &+ C v_{i+1} + f^{int}(u_{i+1}) = f^{ext}_{i+1} .
+v_{i+1} &= v_i + (1-\gamma) \Delta t ~ a_i + \gamma \Delta t ~ a_{i+1}, \\
+a_{i+1} &= \frac{u_{i+1} - (u_i + \Delta t ~ v_i + (0.5 - \beta) \Delta t^2 ~ a_i)}{\beta \Delta t^2}, \\
+Ma_{i+1} &+ C v_{i+1} + f^{\rm int}(u_{i+1}) = f^{\rm ext}_{i+1} .
 \end{align}
 
 \section{Computing the cavity volume}
@@ -209,7 +210,7 @@ One of the quantities reported for the benchmark problem is the cavity volume.
 The simplest way to compute this quantity is by an integral over the cavity, i.e.
 by
 \begin{align}
-V &= \int_\Omega dx = \int_{\Omega_0} J dX,
+V &= \int_\Omega \dx = \int_{\Omega_0} J \dX,
 \label{vol0}\end{align}
 where $J=\det(F)$ and $F$ is the deformation gradient, or,
 equivalently, the Jacobian of the coordinate transformation from $X$
@@ -222,14 +223,14 @@ but instead applies the divergence theorem to turn the volume integral into
 a surface integral over the endocardial surface. The divergence theorem states
 that
 \[
-\int_\Omega \nabla\cdot f dx = \int_{\partial\Omega} f\cdot \mathbf{n} ds
+\int_\Omega \nabla\cdot f \, \dx = \int_{\partial\Omega} f\cdot \mathbf{n} \, \ds,
 \]
 holds for any smooth function $f$ on a volume $\Omega$, with $\mathbf{n}$ being the
 outward surface normal of $\partial\Omega$. If we introduce an
 arbitrary vector-valued function $\mathbf{g}$ satisfying $\nabla\cdot \mathbf{g} = 1$, we have
 \[
-V =\int_{\Omega} dx = \int_{\Omega}\nabla\cdot \mathbf{g}dx
-= \int_{\partial\Omega}\mathbf{g}\cdot\mathbf{n}ds .
+V =\int_{\Omega} \dx = \int_{\Omega}\nabla\cdot \mathbf{g} \, \dx
+= \int_{\partial\Omega}\mathbf{g}\cdot\mathbf{n} \, \ds .
 \]
 There are many simple choices for the function $\mathbf{g}$, for instance $\mathbf{g}=(x_1,0,0)$ or
 $\mathbf{g}=\mathbf{x}/3$.
@@ -245,9 +246,9 @@ in the $x_1$ direction, but the surface normal stays constant through the
 deformation. We can choose, for instance, $\mathbf{g}=(0,x_2,0)$ to ensure that the
 contribution from this part of the surface is always zero. We then have
 \begin{align}
-V &= \int_{\partial\Omega_{endo}}(0,x_2,0) \cdot\mathbf{n}ds ,
+V &= \int_{\partial\Omega_{\rm endo}}(0,x_2,0) \cdot\mathbf{n} \, \ds ,
 \label{vol1}\end{align}
-where $\partial\Omega_{endo}$ is the deformed configuration of the (open)
+where $\partial\Omega_{\rm endo}$ is the deformed configuration of the (open)
 endocardial surface.
 
 
@@ -259,15 +260,15 @@ integral in the reference configuration. We have
 where $\mathbf{X}$ is the position vector in the undeformed (material) configuration.
 From Nanson's formula we have that
 \begin{align}
-\mathbf{n}ds &= J\mathbf{F}^{-T}\mathbf{\eta}dS,
+\mathbf{n} \, \ds &= J\mathbf{F}^{-T}\mathbf{\eta} \, \dS,
 \label{nanson}\end{align}
-where $\mathbf{\eta}, dS$ are the surface normal and area of the undeformed surface.
-Using \eqref{displ}-\eqref{nanson}, we can convert \eqref{vol1} to
+where $\mathbf{\eta}$ and $\dS$ are the surface normal and area of the undeformed surface.
+Using \eqref{displ}--\eqref{nanson}, we can convert \eqref{vol1} to
 \begin{align}
-V &=  \int_{\partial\Omega_{endo,0}}(u_2+X_2)\cdot
-J\mathbf{F}^{-T}\mathbf{\eta}dS ,
+V &=  \int_{\partial\Omega_{\rm endo,\, 0}}(u_2+X_2)\cdot
+J\mathbf{F}^{-T}\mathbf{\eta} \, \dS ,
 \label{vol2}\end{align}
-where $\partial\Omega_{endo,0}$ is the undeformed configuration
+where $\partial\Omega_{\rm endo,\, 0}$ is the undeformed configuration
 of the endocardial surface.
 
 \bibliographystyle{plain}
