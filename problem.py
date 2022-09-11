@@ -198,7 +198,7 @@ class Problem:
             a_old = self.a_old
 
         dt = self.parameters["dt"]
-        dt2 = dt ** 2
+        dt2 = dt**2
         beta = self._beta
         return (u - (u_old + dt * v_old + (0.5 - beta) * dt2 * a_old)) / (beta * dt2)
 

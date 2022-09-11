@@ -346,7 +346,9 @@ class EllipsoidGeometry:
         return load_geometry(fname)
 
     @classmethod
-    def from_parameters(cls, mesh_params=None, fiber_params=None):
+    def from_parameters(
+        cls, mesh_params=None, fiber_params=None
+    ) -> "EllipsoidGeometry":
         mesh_params = mesh_params or {}
         mesh_parameters = EllipsoidGeometry.default_mesh_parameters()
         mesh_parameters.update(mesh_params)
@@ -398,12 +400,12 @@ class EllipsoidGeometry:
     @staticmethod
     def default_fiber_parameters():
         return dict(
-            function_space="CG_1",
+            function_space="Quadrature_4",
             alpha_endo=-60.0,
             alpha_epi=+60.0,
         )
 
 
 if __name__ == "__main__":
-    geo = EllipsoidGeometry.from_parameters(mesh_params={"mesh_size_factor": 2.0})
-    dolfin.File("coarse_mesh.pvd") << geo.mesh
+    geo = EllipsoidGeometry.from_parameters()
+    dolfin.File("ffun.pvd") << geo.ffun
