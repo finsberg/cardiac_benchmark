@@ -53,7 +53,11 @@ def activation_pressure_function(
         ]
 
     res = scipy.integrate.solve_ivp(
-        rhs, t_span, [0.0, 0.0], t_eval=t_eval, method="Radau"
+        rhs,
+        t_span,
+        [0.0, 0.0],
+        t_eval=t_eval,
+        method="Radau",
     )
 
     return (res.t, res.y.squeeze())

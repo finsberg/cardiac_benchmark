@@ -347,7 +347,9 @@ class EllipsoidGeometry:
 
     @classmethod
     def from_parameters(
-        cls, mesh_params=None, fiber_params=None
+        cls,
+        mesh_params=None,
+        fiber_params=None,
     ) -> "EllipsoidGeometry":
         mesh_params = mesh_params or {}
         mesh_parameters = EllipsoidGeometry.default_mesh_parameters()
