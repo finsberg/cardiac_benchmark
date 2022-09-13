@@ -116,10 +116,6 @@ def main():
     dt = 0.01
     parameters = Problem.default_parameters()
 
-    # Newmark beta method
-    parameters["alpha_m"] = dolfin.Constant(0.0)
-    parameters["alpha_f"] = dolfin.Constant(0.0)
-
     time = np.arange(dt, 1, dt)
     plot_activation_pressure_function(t=time)
 
