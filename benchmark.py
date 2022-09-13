@@ -92,7 +92,7 @@ def solve(problem, tau, act, pressure, p, time, collector):
         dolfin.info(f"Solving for time {t:.3f} with tau = {a} and pressure = {p_}")
 
         tau.assign(a)
-        p.assign(p_)
+        # p.assign(p_)
         converged = problem.solve()
         if not converged:
             raise RuntimeError
@@ -113,7 +113,7 @@ def main():
 
     tau = dolfin.Constant(0.0)
 
-    dt = 0.0001
+    dt = 0.01
     parameters = Problem.default_parameters()
 
     # Newmark beta method
@@ -145,7 +145,13 @@ def main():
     problem.solve()
 
     result_filepath = Path("results.h5")
-    collector = DataCollector(result_filepath, u=problem.u, geometry=geo)
+    collector = DataCollector(
+        result_filepath,
+        u=problem.u_old,
+        v=problem.v_old,
+        a=problem.a_old,
+        geometry=geo,
+    )
 
     solve(
         problem=problem,
@@ -165,5 +171,5 @@ def postprocess():
 
 
 if __name__ == "__main__":
-    # main()
-    postprocess()
+    main()
+    # postprocess()

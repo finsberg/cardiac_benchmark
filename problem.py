@@ -102,13 +102,14 @@ class Problem:
 
     def _form(self, u, v, w):
         F = dolfin.variable(dolfin.grad(u) + dolfin.Identity(3))
+        J = dolfin.det(F)
+
         F_dot = dolfin.grad(v)
         E_dot = dolfin.variable(0.5 * (F.T * F_dot + F_dot.T * F))
         n = ufl.cofac(F) * self.N
 
         return (
-            -dolfin.inner(self.parameters["p"] * dolfin.Identity(3) * n, w)
-            * self.ds(self.endo)
+            -dolfin.inner(self.parameters["p"] * J * n, w) * self.ds(self.endo)
             + (
                 dolfin.inner(
                     dolfin.dot(self.parameters["alpha_epi"] * u, self.N)
@@ -254,6 +255,10 @@ class Problem:
             self.u,
             dolfin.TrialFunction(self.u_space),
         )
+
+        # breakpoint()
+
+        # bcs = dolfin.DirichletBC(self.u_space, dolfin.Constant((0.0, 0.0, 0.0), )
 
         self._problem = NonlinearProblem(
             J=self._jacobian,

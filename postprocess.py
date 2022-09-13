@@ -15,13 +15,15 @@ from geometry import save_geometry
 
 
 class DataCollector:
-    def __init__(self, path, u, geometry: EllipsoidGeometry) -> None:
+    def __init__(self, path, u, v, a, geometry: EllipsoidGeometry) -> None:
         self._path = Path(path)
         if self._path.is_file():
             # Delete file if is allready exist
             self._path.unlink()
         self._path = path
         self.u = u
+        self.v = v
+        self.a = a
 
         self._comm = dolfin.MPI.comm_world
         if geometry.mesh is not None:
@@ -43,6 +45,8 @@ class DataCollector:
         """
         with dolfin.HDF5File(self._comm, self.path, "a") as h5file:
             h5file.write(self.u, f"/u/{t:.4f}")
+            h5file.write(self.v, f"/v/{t:.4f}")
+            h5file.write(self.a, f"/a/{t:.4f}")
 
 
 class DataLoader:
@@ -94,7 +98,9 @@ class DataLoader:
         )(self.geometry.markers["ENDO"][0])
 
         V = dolfin.FunctionSpace(mesh, self.signature)
-        self.u = dolfin.Function(V)
+        self.u = dolfin.Function(V, name="displacement")
+        self.v = dolfin.Function(V, name="velocity")
+        self.a = dolfin.Function(V, name="acceleration")
 
     def get(self, t):
 
@@ -105,7 +111,9 @@ class DataLoader:
             raise KeyError(f"Invalid time stamp {t}")
 
         self._h5file.read(self.u, f"u/{t}/")
-        return self.u
+        self._h5file.read(self.v, f"v/{t}/")
+        self._h5file.read(self.a, f"a/{t}/")
+        return self.u, self.v, self.a
 
     @property
     def path(self) -> str:
@@ -116,8 +124,11 @@ class DataLoader:
         xdmf = dolfin.XDMFFile(self.geometry.mesh.mpi_comm(), path)
         for t in self.time_stamps:
             print(f"Time {t}", end="\r")
-            u = self.get(t)
-            xdmf.write(u, t)
+            u, v, a = self.get(t)
+
+            xdmf.write_checkpoint(u, "displacement", t, append=True)
+            xdmf.write_checkpoint(v, "velocity", t, append=True)
+            xdmf.write_checkpoint(a, "acceleration", t, append=True)
         xdmf.close()
 
     def deformation_at_point(self, p):
@@ -197,7 +208,8 @@ class DataLoader:
         up1 = []
         for t in self.time_stamps:
             print(f"Time {t}", end="\r")
-            u = self.get(t)
+            u, v, a = self.get(t)
+
             up0.append(u(p0))
             up1.append(u(p1))
             vols.append(self._volume_at_timepoint(u))
@@ -232,8 +244,10 @@ class DataLoader:
         up1 = []
         for t in self.time_stamps:
             print(f"Time {t}", end="\r")
-            u = self.get(t)
-            xdmf.write(u, t)
+            u, v, a = self.get(t)
+            xdmf.write_checkpoint(u, "displacement", t, append=True)
+            xdmf.write_checkpoint(v, "velocity", t, append=True)
+            xdmf.write_checkpoint(a, "acceleration", t, append=True)
             up0.append(u(p0))
             up1.append(u(p1))
             vols.append(self._volume_at_timepoint(u))
