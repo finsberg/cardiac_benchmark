@@ -86,18 +86,20 @@ def plot_activation_pressure_function(t):
     fig.savefig("pressure_function.png")
 
 
-def solve(problem, tau, act, pressure, p, time, collector):
+def solve(problem, tau, act, pressure, p, time, collector, store_freq: int = 1):
 
-    for t, a, p_ in zip(time, act, pressure):
-        dolfin.info(f"Solving for time {t:.3f} with tau = {a} and pressure = {p_}")
+    for i, (t, a, p_) in enumerate(zip(time, act, pressure)):
+        dolfin.info(f"{i}: Solving for time {t:.3f} with tau = {a} and pressure = {p_}")
 
         tau.assign(a)
-        # p.assign(p_)
+        p.assign(p_)
         converged = problem.solve()
         if not converged:
             raise RuntimeError
 
-        collector.store(t)
+        if i % store_freq == 0:
+            dolfin.info("Store solution")
+            collector.store(t)
 
 
 def get_geometry():
@@ -113,7 +115,7 @@ def main():
 
     tau = dolfin.Constant(0.0)
 
-    dt = 0.01
+    dt = 0.001
     parameters = Problem.default_parameters()
 
     time = np.arange(dt, 1, dt)
@@ -141,13 +143,7 @@ def main():
     problem.solve()
 
     result_filepath = Path("results.h5")
-    collector = DataCollector(
-        result_filepath,
-        u=problem.u_old,
-        v=problem.v_old,
-        a=problem.a_old,
-        geometry=geo,
-    )
+    collector = DataCollector(result_filepath, problem=problem)
 
     solve(
         problem=problem,
@@ -157,6 +153,7 @@ def main():
         p=p,
         time=time,
         collector=collector,
+        store_freq=10,
     )
 
 
@@ -167,5 +164,5 @@ def postprocess():
 
 
 if __name__ == "__main__":
-    main()
-    # postprocess()
+    # main()
+    postprocess()

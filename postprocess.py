@@ -9,27 +9,48 @@ from dolfin import FiniteElement  # noqa: F401
 from dolfin import tetrahedron  # noqa: F401
 from dolfin import VectorElement  # noqa: F401
 
-from geometry import EllipsoidGeometry
 from geometry import load_geometry
 from geometry import save_geometry
+from problem import Problem
+
+
+def save_problem(fname, problem: Problem):
+    path = Path(fname)
+    if path.is_file():
+        path.unlink()
+    save_geometry(fname, problem.geometry)
+
+    with h5py.File(fname, "a") as h5file:
+        group = h5file.create_group("problem_parameters")
+        for k, v in problem.parameters.items():
+            group.create_dataset(k, data=float(v))
+
+        group = h5file.create_group("material_parameters")
+        for k, v in problem.material.parameters.items():
+            group.create_dataset(k, data=float(v))
+
+        h5file.create_group("p")
+        h5file.create_group("tau")
 
 
 class DataCollector:
-    def __init__(self, path, u, v, a, geometry: EllipsoidGeometry) -> None:
+    def __init__(self, path, problem: Problem) -> None:
         self._path = Path(path)
         if self._path.is_file():
             # Delete file if is allready exist
             self._path.unlink()
         self._path = path
-        self.u = u
-        self.v = v
-        self.a = a
+        self.u = problem.u_old
+        self.v = problem.v_old
+        self.a = problem.a_old
+        self.p = problem.parameters["p"]
+        self.tau = problem.material.tau
 
         self._comm = dolfin.MPI.comm_world
-        if geometry.mesh is not None:
-            self._comm = geometry.mesh.mpi_comm()
+        if problem.geometry.mesh is not None:
+            self._comm = problem.geometry.mesh.mpi_comm()
 
-        save_geometry(path, geometry)
+        save_problem(path, problem)
 
     @property
     def path(self) -> str:
@@ -47,6 +68,10 @@ class DataCollector:
             h5file.write(self.u, f"/u/{t:.4f}")
             h5file.write(self.v, f"/v/{t:.4f}")
             h5file.write(self.a, f"/a/{t:.4f}")
+
+        with h5py.File(self.path, "a") as h5file:
+            h5file["p"].create_dataset(f"{t:.4f}", data=float(self.p))
+            h5file["tau"].create_dataset(f"{t:.4f}", data=float(self.tau))
 
 
 class DataLoader:
@@ -102,13 +127,22 @@ class DataLoader:
         self.v = dolfin.Function(V, name="velocity")
         self.a = dolfin.Function(V, name="acceleration")
 
-    def get(self, t):
-
+    def _check_t(self, t):
         if not isinstance(t, str):
             t = f"{t:.4f}"
 
         if t not in self.time_stamps_str:
             raise KeyError(f"Invalid time stamp {t}")
+
+    def get_u(self, t):
+
+        self._check_t(t)
+        self._h5file.read(self.u, f"u/{t}/")
+        return self.u
+
+    def get(self, t):
+
+        self._check_t(t)
 
         self._h5file.read(self.u, f"u/{t}/")
         self._h5file.read(self.v, f"v/{t}/")
@@ -157,7 +191,7 @@ class DataLoader:
         vols = []
         for t in self.time_stamps:
             print(f"Volume at time {t}", end="\r")
-            u = self.get(t)
+            u = self.get_u(t)
             vols.append(self._volume_at_timepoint(u))
         return np.array(vols)
 
@@ -230,7 +264,7 @@ class DataLoader:
         )
 
     def postprocess_all(self):
-        xdmf = dolfin.XDMFFile(self.geometry.mesh.mpi_comm(), "u.xdmf")
+        xdmf = dolfin.XDMFFile(self.geometry.mesh.mpi_comm(), "motion.xdmf")
         p0 = (0.025, 0.03, 0)
         p1 = (0, 0.03, 0)
 
@@ -242,12 +276,12 @@ class DataLoader:
         vols = []
         up0 = []
         up1 = []
-        for t in self.time_stamps:
+        for t in self.time_stamps_str:
             print(f"Time {t}", end="\r")
-            u, v, a = self.get(t)
-            xdmf.write_checkpoint(u, "displacement", t, append=True)
-            xdmf.write_checkpoint(v, "velocity", t, append=True)
-            xdmf.write_checkpoint(a, "acceleration", t, append=True)
+            u = self.get_u(t)
+            xdmf.write(u, float(t))
+            # xdmf.write_checkpoint(v, "velocity", t, append=True)
+            # xdmf.write_checkpoint(a, "acceleration", t, append=True)
             up0.append(u(p0))
             up1.append(u(p1))
             vols.append(self._volume_at_timepoint(u))
