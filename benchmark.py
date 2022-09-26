@@ -20,7 +20,7 @@ dolfin.parameters["form_compiler"]["cpp_optimize_flags"] = " ".join(flags)
 # TODO: Should we add more compiler flags?
 
 
-def activation_function(
+def activation_pressure_function(
     t_span,
     t_eval=None,
     t_sys=0.17,
@@ -29,6 +29,10 @@ def activation_function(
     a_max=5.0,
     a_min=-30.0,
     sigma_0=1e5,
+    alpha_pre=5.0,
+    alpha_mid=20.0,
+    sigma_pre=9332.4,
+    sigma_mid=15998.0,
 ):
 
     f = (
@@ -38,60 +42,64 @@ def activation_function(
     )
     a = lambda t: a_max * f(t) + a_min * (1 - f(t))
 
-    def rhs(t, tau):
-        return -abs(a(t)) * tau + sigma_0 * max(a(t), 0)
+    f_pre = lambda t: 0.5 * (1 - math.tanh((t - t_dias) / gamma))
+    b = lambda t: a(t) + alpha_pre * f_pre(t) + alpha_mid
 
-    res = scipy.integrate.solve_ivp(rhs, t_span, [0.0], t_eval=t_eval)
+    def rhs(t, state):
+        tau, p = state
+        return [
+            -abs(a(t)) * tau + sigma_0 * max(a(t), 0),
+            -abs(b(t)) * p + sigma_mid * max(b(t), 0) + sigma_pre * max(f_pre(t), 0),
+        ]
+
+    res = scipy.integrate.solve_ivp(
+        rhs,
+        t_span,
+        [0.0, 0.0],
+        t_eval=t_eval,
+        method="Radau",
+    )
 
     return (res.t, res.y.squeeze())
 
 
-def plot_activation_function(t):
+def plot_activation_pressure_function(t):
     import matplotlib.pyplot as plt
 
+    t, state = activation_pressure_function(t_span=(0, 1), t_eval=t)
+
+    act = state[0, :]
+    pressure = state[1, :]
+
     fig, ax = plt.subplots()
-    ax.plot(*activation_function(t_span=(0, 1), t_eval=t))
+    ax.plot(t, act)
     ax.set_title("Activation fuction \u03C4(t)")
     ax.set_ylabel("Pressure [Pa]")
     ax.set_xlabel("Time [s]")
     fig.savefig("activation_function.png")
 
+    fig, ax = plt.subplots()
+    ax.plot(t, pressure)
+    ax.set_title("Pressure fuction p(t)")
+    ax.set_ylabel("Pressure [Pa]")
+    ax.set_xlabel("Time [s]")
+    fig.savefig("pressure_function.png")
 
-def solve(problem, tau, act, time, collector):
 
-    dt = float(problem.parameters["dt"])
+def solve(problem, tau, act, pressure, p, time, collector, store_freq: int = 1):
 
-    for t, a in zip(time, act):
-        dolfin.info(f"Solving for time {t:.3f} with tau = {a}")
+    for i, (t, a, p_) in enumerate(zip(time, act, pressure)):
+        dolfin.info(f"{i}: Solving for time {t:.3f} with tau = {a} and pressure = {p_}")
 
-        converged = False
-        target_tau = a
-        prev_tau = float(tau)
-        num_crash = 0
+        tau.assign(a)
+        p.assign(p_)
+        converged = problem.solve()
+        if not converged:
+            raise RuntimeError
 
-        if not math.isclose(float(tau), target_tau):
-            problem.parameters["dt"].assign(dt)
-            while not converged and not math.isclose(float(tau), target_tau):
-                print(f"Try a = {a}")
-                tau.assign(a)
-
-                converged = problem.solve()
-
-                if converged:
-                    num_crash = 0
-                    prev_tau = a
-                    a = target_tau
-
-                else:
-                    a = prev_tau + (a - prev_tau) / 2
-                    tau.assign(a)
-                    problem.parameters["dt"].assign(problem.parameters["dt"] * 0.5)
-                    num_crash += 1
-
-                if num_crash > 10:
-                    raise RuntimeError
-
-        collector.store(t)
+        if i % store_freq == 0:
+            dolfin.info("Store solution")
+            collector.store(t)
 
 
 def get_geometry():
@@ -106,15 +114,21 @@ def main():
     geo = get_geometry()
 
     tau = dolfin.Constant(0.0)
-    dt = 0.0001
+
+    dt = 0.001
     parameters = Problem.default_parameters()
 
     time = np.arange(dt, 1, dt)
-    plot_activation_function(t=time)
-    _, act = activation_function(
+    plot_activation_pressure_function(t=time)
+
+    _, state = activation_pressure_function(
         (0, 1),
         t_eval=time - float(parameters["alpha_f"]) * dt,
     )
+    act = state[0, :]
+    pressure = state[1, :]
+    p = dolfin.Constant(0.0)
+    parameters["p"] = p
 
     material = HolzapfelOgden(f0=geo.f0, n0=geo.n0, tau=tau)
 
@@ -129,17 +143,26 @@ def main():
     problem.solve()
 
     result_filepath = Path("results.h5")
-    collector = DataCollector(result_filepath, u=problem.u, geometry=geo)
+    collector = DataCollector(result_filepath, problem=problem)
 
-    solve(problem, tau, act, time, collector)
+    solve(
+        problem=problem,
+        tau=tau,
+        act=act,
+        pressure=pressure,
+        p=p,
+        time=time,
+        collector=collector,
+        store_freq=10,
+    )
 
 
 def postprocess():
     loader = DataLoader("results.h5")
     loader.postprocess_all()
-    loader.compare_results()
+    # loader.compare_results()
 
 
 if __name__ == "__main__":
-    main()
+    # main()
     postprocess()

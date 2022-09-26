@@ -86,13 +86,13 @@ class HolzapfelOgden:
         a = self.parameters["a_fn"]
         b = self.parameters["b_fn"]
 
-        return a / (2.0 * b) * (dolfin.exp(b * I8 ** 2) - 1.0)
+        return a / (2.0 * b) * (dolfin.exp(b * I8**2) - 1.0)
 
     def W_compress(self, J):
         """
         Compressibility contribution
         """
-        return 0.25 * self.parameters["kappa"] * (J ** 2 - 1 - 2 * dolfin.ln(J))
+        return 0.25 * self.parameters["kappa"] * (J**2 - 1 - 2 * dolfin.ln(J))
 
     def W_visco(self, E_dot):
         """Viscoelastic contributions"""

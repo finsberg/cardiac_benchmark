@@ -87,7 +87,7 @@ def compute_system(
     y = dof_coordinates[:, 1]
     z = dof_coordinates[:, 2]
 
-    a = np.sqrt(y ** 2 + z ** 2) / rs
+    a = np.sqrt(y**2 + z**2) / rs
     b = x / rl
     mu = np.arctan2(a, b)
     theta = np.pi - np.arctan2(z, -y)
@@ -155,9 +155,11 @@ def compute_system(
 
     fiber = dolfin.Function(Vv)
     f = np.zeros_like(fiber.vector().get_local())
-    f[x_dofs] = f0[0, scalar_dofs]
-    f[y_dofs] = f0[1, scalar_dofs]
-    f[z_dofs] = f0[2, scalar_dofs]
+
+    f[x_dofs] = f0[0, scalar_dofs] / np.linalg.norm(f0, axis=0)
+    f[y_dofs] = f0[1, scalar_dofs] / np.linalg.norm(f0, axis=0)
+    f[z_dofs] = f0[2, scalar_dofs] / np.linalg.norm(f0, axis=0)
+
     fiber.vector().set_local(f)
     fiber.vector().apply("insert")
     fiber.rename("fiber", "fibers")
