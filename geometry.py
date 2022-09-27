@@ -122,11 +122,13 @@ def create_benchmark_ellipsoid_mesh_gmsh(
 ):
 
     gmsh.initialize()
+
     gmsh.option.setNumber("Geometry.CopyMeshingMethod", 1)
     gmsh.option.setNumber("Mesh.Optimize", 1)
     gmsh.option.setNumber("Mesh.OptimizeNetgen", 1)
+    # gmsh.option.setNumber("Mesh.Algorithm3D", 7)
     gmsh.option.setNumber("Mesh.ElementOrder", 1)
-    gmsh.option.setNumber("Mesh.HighOrderOptimize", 1)  # I don't think we need this?
+    # gmsh.option.setNumber("Mesh.Smoothing", 100)
     gmsh.option.setNumber("Mesh.MeshSizeFactor", mesh_size_factor)
 
     def ellipsoid_point(mu, theta, r_long, r_short, psize):

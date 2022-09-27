@@ -1,3 +1,4 @@
+import typing
 from pathlib import Path
 
 import dolfin
@@ -11,7 +12,15 @@ from dolfin import VectorElement  # noqa: F401
 
 from geometry import load_geometry
 from geometry import save_geometry
+from material import HolzapfelOgden
 from problem import Problem
+
+
+class SavedProblem(typing.NamedTuple):
+    problem: Problem
+    time_stamps_str: np.ndarray
+    time_stamps: np.ndarray
+    signature: ufl.finiteelement.FiniteElementBase
 
 
 def save_problem(fname, problem: Problem):
@@ -31,6 +40,63 @@ def save_problem(fname, problem: Problem):
 
         h5file.create_group("p")
         h5file.create_group("tau")
+
+
+def load_problem(fname) -> SavedProblem:
+    path = Path(fname)
+    if not path.is_file():
+        raise FileNotFoundError(f"File {path} does not exist")
+
+    required_keys = ["mesh", "u", "problem_parameters", "material_parameters"]
+    with h5py.File(path, "r") as h5file:
+
+        # Check that we have the required keys
+        for key in required_keys:
+            if key not in h5file:
+                raise ValueError(f"Missing {key} in results file. Cannot load data")
+
+        time_stamps_str = sorted(h5file["u"].keys(), key=lambda x: float(x))
+        time_stamps = np.array(time_stamps_str, dtype=float)
+
+        if len(time_stamps_str) == 0:
+            raise ValueError(
+                "No timestamps found in results file. Cannot load data",
+            )
+
+        signature = h5file["u"][time_stamps_str[0]].attrs["signature"]
+        signature = eval(signature)
+
+        material_parameters = {}
+        for k, v in h5file["material_parameters"].items():
+            material_parameters[k] = v[...].tolist()
+
+        problem_parameters = {}
+        for k, v in h5file["problem_parameters"].items():
+            problem_parameters[k] = v[...].tolist()
+
+    geometry = load_geometry(path)
+
+    tau = dolfin.Constant(0.0)
+    material = HolzapfelOgden(
+        f0=geometry.f0,
+        n0=geometry.n0,
+        tau=tau,
+        parameters=material_parameters,
+    )
+
+    problem = Problem(
+        geometry=geometry,
+        material=material,
+        function_space=f"{signature.family()}_{signature.degree()}",
+        parameters=problem_parameters,
+    )
+
+    return SavedProblem(
+        problem=problem,
+        time_stamps_str=time_stamps_str,
+        time_stamps=time_stamps,
+        signature=signature,
+    )
 
 
 class DataCollector:
@@ -80,27 +146,8 @@ class DataLoader:
         if not self._path.is_file():
             raise FileNotFoundError(f"File {path} does not exist")
 
-        with h5py.File(path, "r") as h5file:
+        self._problem = load_problem(path)
 
-            # Check that we have mesh
-            if "mesh" not in h5file:
-                raise ValueError("No mesh in results file. Cannot load data")
-
-            if "u" not in h5file:
-                raise ValueError("No displacement in results file. Cannot load data")
-
-            self.time_stamps_str = sorted(h5file["u"].keys(), key=lambda x: float(x))
-            self.time_stamps = np.array(self.time_stamps_str, dtype=float)
-
-            if len(self.time_stamps_str) == 0:
-                raise ValueError(
-                    "No timestamps found in results file. Cannot load data",
-                )
-
-            signature = h5file["u"][self.time_stamps_str[0]].attrs["signature"]
-            self.signature = eval(signature)
-
-        self.geometry = load_geometry(path)
         if self.geometry.mesh is None:
             raise RuntimeError("Cannot load mesh")
 
@@ -113,6 +160,8 @@ class DataLoader:
             self.path,
             "r",
         )
+
+        self._h5file_py = h5py.File(self.path, "r")
 
         if self.geometry.markers is None:
             raise RuntimeError("Cannot load markers")
@@ -127,6 +176,32 @@ class DataLoader:
         self.v = dolfin.Function(V, name="velocity")
         self.a = dolfin.Function(V, name="acceleration")
 
+        self.stress_space = dolfin.FunctionSpace(self.geometry.mesh, "CG", 1)
+
+    def __del__(self):
+        self._h5file.close()
+        self._h5file_py.close()
+
+    @property
+    def problem(self):
+        return self._problem.problem
+
+    @property
+    def signature(self):
+        return self._problem.signature
+
+    @property
+    def time_stamps(self):
+        return self._problem.time_stamps
+
+    @property
+    def time_stamps_str(self):
+        return self._problem.time_stamps_str
+
+    @property
+    def geometry(self):
+        return self.problem.geometry
+
     def _check_t(self, t):
         if not isinstance(t, str):
             t = f"{t:.4f}"
@@ -140,6 +215,13 @@ class DataLoader:
         self._h5file.read(self.u, f"u/{t}/")
         return self.u
 
+    def get_u_p_tau(self, t):
+        self._check_t(t)
+        self._h5file.read(self.u, f"u/{t}/")
+        p = self._h5file_py["p"][t][...].tolist()
+        tau = self._h5file_py["tau"][t][...].tolist()
+        return (self.u, p, tau)
+
     def get(self, t):
 
         self._check_t(t)
@@ -152,6 +234,21 @@ class DataLoader:
     @property
     def path(self) -> str:
         return self._path.as_posix()
+
+    def von_Mises_stress_at_point(self, point):
+        print(f"Compute von Mises stress at point {point}")
+        stress = []
+        for t in self.time_stamps_str:
+            print(f"Time {t}", end="\r")
+            stress.append(self.von_Mises_stress_at_timepoint(t)(point))
+        return stress
+
+    def von_Mises_stress_at_timepoint(self, t):
+        u, p, tau = self.get_u_p_tau(t)
+        self.problem.u.assign(u)
+        self.problem.parameters["p"] = p
+        self.problem.parameters["tau"] = tau
+        return dolfin.project(self.problem.von_Mises(), self.stress_space)
 
     def to_xdmf(self, path):
         print("Write displacement to xdmf")
@@ -264,35 +361,42 @@ class DataLoader:
         )
 
     def postprocess_all(self):
-        xdmf = dolfin.XDMFFile(self.geometry.mesh.mpi_comm(), "motion.xdmf")
+
+        comm = self.geometry.mesh.mpi_comm()
+        u_xdmf = dolfin.XDMFFile(comm, "displacement.xdmf")
+        von_mises_xdmf = dolfin.XDMFFile(comm, "von_Mises_stress.xdmf")
+        s = dolfin.Function(self.stress_space)
         p0 = (0.025, 0.03, 0)
         p1 = (0, 0.03, 0)
-
-        # p0 = (0.02647058823529411, -1.463099651233471e-18, -0.02389423060187047)
-        # p1 = (0.02647058823529411, 4.389298953700411e-18, 0.02389423060187047)
-        # p2 = (0.02647058823529411, 0, 0)
-        # p3 = (0.02647058823529411, 0.02389423060187047, -2.926199302466941e-18)
 
         vols = []
         up0 = []
         up1 = []
+        von_mises_p0 = []
+        von_mises_p1 = []
         for t in self.time_stamps_str:
             print(f"Time {t}", end="\r")
             u = self.get_u(t)
-            xdmf.write(u, float(t))
-            # xdmf.write_checkpoint(v, "velocity", t, append=True)
-            # xdmf.write_checkpoint(a, "acceleration", t, append=True)
+
+            s.assign(self.von_Mises_stress_at_timepoint(t))
+            von_mises_p0.append(s(p0))
+            von_mises_p1.append(s(p1))
+
+            u_xdmf.write(u, float(t))
+            von_mises_xdmf.write(s, float(t))
+
             up0.append(u(p0))
             up1.append(u(p1))
             vols.append(self._volume_at_timepoint(u))
-        xdmf.close()
+        u_xdmf.close()
+        von_mises_xdmf.close()
 
         plot_componentwise_displacement(
             up0=np.array(up0),
             up1=np.array(up1),
             time_stamps=self.time_stamps,
         )
-
+        plot_von_Mises_stress(von_mises_p0, von_mises_p1, time_stamps=self.time_stamps)
         plot_volume(volumes=vols, time_stamps=self.time_stamps)
 
 
@@ -323,6 +427,28 @@ def plot_componentwise_displacement(
     for axi in ax:
         axi.legend()
         axi.grid()
+    fig.savefig(fname, dpi=300)
+
+
+def plot_von_Mises_stress(
+    sp0,
+    sp1,
+    time_stamps,
+    fname="von_Mises_stress.png",
+):
+    fname = Path(fname).with_suffix(".png")
+
+    basefname = fname.with_suffix("").as_posix()
+    np.save(Path(basefname + "_sp0").with_suffix(".npy"), sp0)
+    np.save(Path(basefname + "_sp1").with_suffix(".npy"), sp1)
+
+    fig, ax = plt.subplots()
+    ax.plot(time_stamps, sp0, label=r"$\sigma_v(p_0)$")
+    ax.plot(time_stamps, sp1, label=r"$\sigma_v(p_1)$")
+    ax.set_ylabel("von Mises stress [Pa]")
+    ax.set_xlabel("Time [s]")
+    ax.legend()
+    ax.grid()
     fig.savefig(fname, dpi=300)
 
 

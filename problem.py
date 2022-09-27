@@ -1,7 +1,6 @@
 import typing
 
 import dolfin
-import ufl
 
 from geometry import EllipsoidGeometry
 from material import HolzapfelOgden
@@ -102,13 +101,12 @@ class Problem:
 
     def _form(self, u, v, w):
         F = dolfin.variable(dolfin.grad(u) + dolfin.Identity(3))
-        J = dolfin.det(F)
         F_dot = dolfin.grad(v)
         E_dot = dolfin.variable(0.5 * (F.T * F_dot + F_dot.T * F))
-        n = ufl.cofac(F) * self.N
 
         return (
-            -dolfin.inner(self.parameters["p"] * J * n, w) * self.ds(self.endo)
+            -dolfin.inner(self.parameters["p"] * dolfin.Identity(3) * self.N, w)
+            * self.ds(self.endo)
             + (
                 dolfin.inner(
                     dolfin.dot(self.parameters["alpha_epi"] * u, self.N)
@@ -255,8 +253,6 @@ class Problem:
             dolfin.TrialFunction(self.u_space),
         )
 
-        # breakpoint()
-
         # bcs = dolfin.DirichletBC(self.u_space, dolfin.Constant((0.0, 0.0, 0.0), )
 
         self._problem = NonlinearProblem(
@@ -269,6 +265,29 @@ class Problem:
             self.u,
             parameters=self.solver_parameters,
         )
+
+    def von_Mises(self):
+        u = self.u
+        v = self.v()
+        F = dolfin.variable(dolfin.grad(u) + dolfin.Identity(3))
+        J = dolfin.det(F)
+        F_dot = dolfin.grad(v)
+        E_dot = dolfin.variable(0.5 * (F.T * F_dot + F_dot.T * F))
+
+        # First piola
+        P = dolfin.diff(self.material.strain_energy(F), F) + F * dolfin.diff(
+            self.material.W_visco(E_dot),
+            E_dot,
+        )
+        # Cauchy
+        T = pow(J, -1.0) * P * F.T
+        von_Mises_squared = 0.5 * (
+            (T[0, 0] - T[1, 1]) ** 2
+            + (T[1, 1] - T[2, 2]) ** 2
+            + (T[2, 2] - T[0, 0]) ** 2
+        ) + 3 * (T[0, 1] + T[1, 2] + T[2, 0])
+
+        return dolfin.sqrt(abs(von_Mises_squared))
 
     @staticmethod
     def default_parameters() -> typing.Dict[str, dolfin.Constant]:
