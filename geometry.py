@@ -404,7 +404,7 @@ class EllipsoidGeometry:
     @staticmethod
     def default_fiber_parameters():
         return dict(
-            function_space="Quadrature_4",
+            function_space="Quadrature_6",
             alpha_endo=-60.0,
             alpha_epi=+60.0,
         )

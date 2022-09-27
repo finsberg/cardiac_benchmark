@@ -20,20 +20,6 @@ def heaviside(x, k=100):
     return 1 / (1 + dolfin.exp(-k * (x - 1)))
 
 
-def I1(F):
-    J = dolfin.det(F)
-    C = F.T * F
-    return pow(J, -2 / 3) * dolfin.tr(C)
-
-
-def I4(F, a0):
-    return dolfin.inner(F * a0, F * a0)
-
-
-def I8(F, a0, b0):
-    return dolfin.inner(F * a0, F * b0)
-
-
 class HolzapfelOgden:
     def __init__(
         self,
@@ -111,8 +97,8 @@ class HolzapfelOgden:
         C = F.T * F
         I1 = pow(J, -2 / 3) * dolfin.tr(C)
         I4f = dolfin.inner(F * self.f0, F * self.f0)
-        I4s = dolfin.inner(F * self.n0, F * self.n0)
-        I8fs = dolfin.inner(F * self.f0, F * self.n0)
+        I4n = dolfin.inner(F * self.n0, F * self.n0)
+        I8fn = dolfin.inner(F * self.f0, F * self.n0)
 
         # Compressibility
         Wcompress = self.W_compress(J)
@@ -122,8 +108,8 @@ class HolzapfelOgden:
 
         W1 = self.W_1(I1)
         W4f = self.W_4(I4f, "f")
-        W4s = self.W_4(I4s, "n")
-        W8fs = self.W_8(I8fs)
+        W4n = self.W_4(I4n, "n")
+        W8fn = self.W_8(I8fn)
 
-        W = W1 + W4f + W4s + W8fs + Wcompress + Wactive
+        W = W1 + W4f + W4n + W8fn + Wcompress + Wactive
         return W
