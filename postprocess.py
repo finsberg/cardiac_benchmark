@@ -1,3 +1,4 @@
+import os
 import typing
 from pathlib import Path
 
@@ -23,7 +24,11 @@ class SavedProblem(typing.NamedTuple):
     signature: ufl.finiteelement.FiniteElementBase
 
 
-def save_problem(fname, problem: Problem):
+def save_problem(
+    fname,
+    problem: Problem,
+    pressure_parameters: typing.Dict[str, float],
+):
     path = Path(fname)
     if path.is_file():
         path.unlink()
@@ -36,6 +41,10 @@ def save_problem(fname, problem: Problem):
 
         group = h5file.create_group("material_parameters")
         for k, v in problem.material.parameters.items():
+            group.create_dataset(k, data=float(v))
+
+        group = h5file.create_group("pressure_parameters")
+        for k, v in pressure_parameters.items():
             group.create_dataset(k, data=float(v))
 
         h5file.create_group("p")
@@ -100,7 +109,12 @@ def load_problem(fname) -> SavedProblem:
 
 
 class DataCollector:
-    def __init__(self, path, problem: Problem) -> None:
+    def __init__(
+        self,
+        path,
+        problem: Problem,
+        pressure_parameters: typing.Dict[str, float],
+    ) -> None:
         self._path = Path(path)
         if self._path.is_file():
             # Delete file if is allready exist
@@ -116,7 +130,7 @@ class DataCollector:
         if problem.geometry.mesh is not None:
             self._comm = problem.geometry.mesh.mpi_comm()
 
-        save_problem(path, problem)
+        save_problem(path, problem, pressure_parameters)
 
     @property
     def path(self) -> str:
@@ -360,11 +374,20 @@ class DataLoader:
             time_stamps_cmp=time_stamps_cmp,
         )
 
-    def postprocess_all(self):
+    def postprocess_all(self, folder: typing.Optional[os.PathLike] = None):
+
+        if folder is None:
+            folder = self._path.with_suffix("")
+        outfolder = Path(folder)
+        outfolder.mkdir(parents=True, exist_ok=True)
 
         comm = self.geometry.mesh.mpi_comm()
-        u_xdmf = dolfin.XDMFFile(comm, "displacement.xdmf")
-        von_mises_xdmf = dolfin.XDMFFile(comm, "von_Mises_stress.xdmf")
+
+        u_path = outfolder / "displacement.xdmf"
+        u_xdmf = dolfin.XDMFFile(comm, u_path.as_posix())
+
+        von_Mises_path = outfolder / "von_Mises_stress.xdmf"
+        von_mises_xdmf = dolfin.XDMFFile(comm, von_Mises_path.as_posix())
         s = dolfin.Function(self.stress_space)
         p0 = (0.025, 0.03, 0)
         p1 = (0, 0.03, 0)
@@ -395,9 +418,19 @@ class DataLoader:
             up0=np.array(up0),
             up1=np.array(up1),
             time_stamps=self.time_stamps,
+            fname=outfolder / "componentwise_displacement.png",
         )
-        plot_von_Mises_stress(von_mises_p0, von_mises_p1, time_stamps=self.time_stamps)
-        plot_volume(volumes=vols, time_stamps=self.time_stamps)
+        plot_von_Mises_stress(
+            von_mises_p0,
+            von_mises_p1,
+            time_stamps=self.time_stamps,
+            fname=outfolder / "von_Mises_stress.png",
+        )
+        plot_volume(
+            volumes=vols,
+            time_stamps=self.time_stamps,
+            fname=outfolder / "volume.png",
+        )
 
 
 def plot_componentwise_displacement(

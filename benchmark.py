@@ -1,10 +1,9 @@
-import math
 from pathlib import Path
 
 import dolfin
 import numpy as np
-import scipy.integrate
 
+import pressure_model
 from geometry import EllipsoidGeometry
 from material import HolzapfelOgden
 from postprocess import DataCollector
@@ -12,78 +11,12 @@ from postprocess import DataLoader
 from problem import Problem
 
 
-dolfin.parameters["form_compiler"]["quadrature_degree"] = 4
+dolfin.parameters["form_compiler"]["quadrature_degree"] = 6
 dolfin.parameters["form_compiler"]["cpp_optimize"] = True
 dolfin.parameters["form_compiler"]["representation"] = "uflacs"
-flags = ["-O3", "-march=native"]
-dolfin.parameters["form_compiler"]["cpp_optimize_flags"] = " ".join(flags)
+# flags = ["-O3", "-march=native"]
+# dolfin.parameters["form_compiler"]["cpp_optimize_flags"] = " ".join(flags)
 # TODO: Should we add more compiler flags?
-
-
-def activation_pressure_function(
-    t_span,
-    t_eval=None,
-    t_sys=0.17,
-    t_dias=0.484,
-    gamma=0.005,
-    a_max=5.0,
-    a_min=-30.0,
-    sigma_0=1e5,
-    alpha_pre=5.0,
-    alpha_mid=20.0,
-    sigma_pre=9332.4,
-    sigma_mid=15998.0,
-):
-
-    f = (
-        lambda t: 0.25
-        * (1 + math.tanh((t - t_sys) / gamma))
-        * (1 - math.tanh((t - t_dias) / gamma))
-    )
-    a = lambda t: a_max * f(t) + a_min * (1 - f(t))
-
-    f_pre = lambda t: 0.5 * (1 - math.tanh((t - t_dias) / gamma))
-    b = lambda t: a(t) + alpha_pre * f_pre(t) + alpha_mid
-
-    def rhs(t, state):
-        tau, p = state
-        return [
-            -abs(a(t)) * tau + sigma_0 * max(a(t), 0),
-            -abs(b(t)) * p + sigma_mid * max(b(t), 0) + sigma_pre * max(f_pre(t), 0),
-        ]
-
-    res = scipy.integrate.solve_ivp(
-        rhs,
-        t_span,
-        [0.0, 0.0],
-        t_eval=t_eval,
-        method="Radau",
-    )
-
-    return (res.t, res.y.squeeze())
-
-
-def plot_activation_pressure_function(t):
-    import matplotlib.pyplot as plt
-
-    t, state = activation_pressure_function(t_span=(0, 1), t_eval=t)
-
-    act = state[0, :]
-    pressure = state[1, :]
-
-    fig, ax = plt.subplots()
-    ax.plot(t, act)
-    ax.set_title("Activation fuction \u03C4(t)")
-    ax.set_ylabel("Pressure [Pa]")
-    ax.set_xlabel("Time [s]")
-    fig.savefig("activation_function.png")
-
-    fig, ax = plt.subplots()
-    ax.plot(t, pressure)
-    ax.set_title("Pressure fuction p(t)")
-    ax.set_ylabel("Pressure [Pa]")
-    ax.set_xlabel("Time [s]")
-    fig.savefig("pressure_function.png")
 
 
 def solve(problem, tau, act, pressure, p, time, collector, store_freq: int = 1):
@@ -110,40 +43,62 @@ def get_geometry():
     return EllipsoidGeometry.from_file(path)
 
 
-def main():
-    geo = get_geometry()
+def run_benchmark(
+    alpha_epi: float = 1e8,
+    eta: float = 1e2,
+    a_f: float = 18472.0,
+    sigma_0: float = 1e5,
+    outpath: str = "results.h5",
+):
+
+    problem_parameters = Problem.default_parameters()
+    pressure_parameters = pressure_model.default_parameters()
+    material_parameters = HolzapfelOgden.default_parameters()
+
+    problem_parameters["alpha_epi"].assign(alpha_epi)
+    material_parameters["eta"].assign(eta)
+    material_parameters["a_f"].assign(a_f)
+    pressure_parameters["sigma_0"] = sigma_0
 
     tau = dolfin.Constant(0.0)
-
     dt = 0.001
-    parameters = Problem.default_parameters()
-
     time = np.arange(dt, 1, dt)
-    plot_activation_pressure_function(t=time)
 
-    _, state = activation_pressure_function(
+    pressure_model.plot_activation_pressure_function(t=time)
+
+    _, state = pressure_model.activation_pressure_function(
         (0, 1),
-        t_eval=time - float(parameters["alpha_f"]) * dt,
+        t_eval=time - float(problem_parameters["alpha_f"]) * dt,
+        parameters=pressure_parameters,
     )
     act = state[0, :]
     pressure = state[1, :]
     p = dolfin.Constant(0.0)
-    parameters["p"] = p
+    problem_parameters["p"] = p
 
+    geo = get_geometry()
     material = HolzapfelOgden(f0=geo.f0, n0=geo.n0, tau=tau)
 
     problem = Problem(
         geometry=geo,
         material=material,
-        function_space="P_2",
-        parameters=parameters,
+        function_space="P_1",
+        parameters=problem_parameters,
     )
 
     problem.parameters["dt"].assign(dt)
     problem.solve()
 
-    result_filepath = Path("results.h5")
-    collector = DataCollector(result_filepath, problem=problem)
+    result_filepath = Path(outpath)
+    if result_filepath.suffix != ".h5":
+        msg = "Expected output path to be to type HDF5 with suffix .h5, got {result_filepath.suffix}"
+        raise OSError(msg)
+    result_filepath.parent.mkdir(exist_ok=True)
+    collector = DataCollector(
+        result_filepath,
+        problem=problem,
+        pressure_parameters=pressure_parameters,
+    )
 
     solve(
         problem=problem,
@@ -157,12 +112,12 @@ def main():
     )
 
 
-def postprocess():
-    loader = DataLoader("results.h5")
+def main():
+    outpath = "results.h5"
+    run_benchmark(outpath=outpath)
+    loader = DataLoader(outpath)
     loader.postprocess_all()
-    # loader.compare_results()
 
 
 if __name__ == "__main__":
     main()
-    postprocess()

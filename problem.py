@@ -1,6 +1,7 @@
 import typing
 
 import dolfin
+import ufl
 
 from geometry import EllipsoidGeometry
 from material import HolzapfelOgden
@@ -105,7 +106,7 @@ class Problem:
         E_dot = dolfin.variable(0.5 * (F.T * F_dot + F_dot.T * F))
 
         return (
-            -dolfin.inner(self.parameters["p"] * dolfin.Identity(3) * self.N, w)
+            dolfin.inner(self.parameters["p"] * ufl.cofac(F) * self.N, w)
             * self.ds(self.endo)
             + (
                 dolfin.inner(
@@ -253,8 +254,6 @@ class Problem:
             dolfin.TrialFunction(self.u_space),
         )
 
-        # bcs = dolfin.DirichletBC(self.u_space, dolfin.Constant((0.0, 0.0, 0.0), )
-
         self._problem = NonlinearProblem(
             J=self._jacobian,
             F=self._virtual_work,
@@ -274,7 +273,7 @@ class Problem:
         F_dot = dolfin.grad(v)
         E_dot = dolfin.variable(0.5 * (F.T * F_dot + F_dot.T * F))
 
-        # First piola
+        # First Piola
         P = dolfin.diff(self.material.strain_energy(F), F) + F * dolfin.diff(
             self.material.W_visco(E_dot),
             E_dot,
