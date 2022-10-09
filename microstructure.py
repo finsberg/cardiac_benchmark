@@ -24,6 +24,7 @@ def laplace(
     mesh: dolfin.Mesh,
     ffun: dolfin.MeshFunction,
     markers: Dict[str, Tuple[int, int]],
+    function_space: str,
 ):
 
     endo_marker = markers["ENDO"][0]
@@ -46,6 +47,18 @@ def laplace(
         t,
         bcs,
     )
+    if function_space != "P_1":
+        family, degree = function_space.split("_")
+        W = dolfin.FunctionSpace(
+            mesh,
+            dolfin.FiniteElement(
+                family=family,
+                cell=mesh.ufl_cell(),
+                degree=int(degree),
+                quad_scheme="default",
+            ),
+        )
+        t = dolfin.interpolate(t, W)
     return t
 
 
@@ -188,6 +201,7 @@ def compute_system(
 def create_microstructure(mesh, ffun, markers, mesh_params, fiber_params):
     check_mesh_params(mesh_params)
     check_fiber_params(fiber_params)
+    function_space = fiber_params.get("function_space", "P_1")
 
-    t = laplace(mesh, ffun, markers)
+    t = laplace(mesh, ffun, markers, function_space=function_space)
     return compute_system(t, **mesh_params, **fiber_params)
