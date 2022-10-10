@@ -11,7 +11,7 @@ from postprocess import DataLoader
 from problem import Problem
 
 
-dolfin.parameters["form_compiler"]["quadrature_degree"] = 6
+dolfin.parameters["form_compiler"]["quadrature_degree"] = 4
 dolfin.parameters["form_compiler"]["cpp_optimize"] = True
 dolfin.parameters["form_compiler"]["representation"] = "uflacs"
 # flags = ["-O3", "-march=native"]

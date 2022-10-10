@@ -291,6 +291,7 @@ def load_geometry(fname) -> "EllipsoidGeometry":
         vfun = dolfin.MeshFunction("size_t", mesh, 0)
         h5file.read(vfun, "vfun")
 
+        element._quad_scheme = "default"
         V = dolfin.FunctionSpace(mesh, element)
         f0 = dolfin.Function(V)
         h5file.read(f0, "f0")
@@ -404,7 +405,7 @@ class EllipsoidGeometry:
     @staticmethod
     def default_fiber_parameters():
         return dict(
-            function_space="Quadrature_6",
+            function_space="Quadrature_4",
             alpha_endo=-60.0,
             alpha_epi=+60.0,
         )
