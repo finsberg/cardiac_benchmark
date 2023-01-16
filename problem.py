@@ -280,7 +280,17 @@ class Problem:
         )
 
     def von_Mises(self) -> ufl.Coefficient:
-        """Compute the von Mises stress tensor
+        r"""Compute the von Mises stress tensor $\sigma_v$, with
+
+        .. math::
+
+            \sigma_v^2 = \frac{1}{2} \left(
+                (\mathrm{T}_{11} - \mathrm{T}_{22})^2 +
+                (\mathrm{T}_{22} - \mathrm{T}_{33})^2 +
+                (\mathrm{T}_{33} - \mathrm{T}_{11})^2 +
+            \right) - 3 \left(
+                \mathrm{T}_{12} + \mathrm{T}_{23} + \mathrm{T}_{31}
+            \right)
 
         Returns
         -------
