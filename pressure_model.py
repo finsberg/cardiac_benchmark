@@ -13,8 +13,8 @@ def default_parameters():
         a_max=5.0,
         a_min=-30.0,
         sigma_0=1e5,
-        alpha_pre=5.0,
-        alpha_mid=20.0,
+        alpha_pre=20.0,
+        alpha_mid=5.0,
         sigma_pre=9332.4,
         sigma_mid=15998.0,
     )
