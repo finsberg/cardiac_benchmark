@@ -1,5 +1,6 @@
 import math
 import typing
+from pathlib import Path
 
 import numpy as np
 import scipy.integrate
@@ -60,7 +61,7 @@ def activation_pressure_function(
     return (res.t, res.y.squeeze())
 
 
-def plot_activation_pressure_function(t):
+def plot_activation_pressure_function(t, outdir):
     import matplotlib.pyplot as plt
 
     t, state = activation_pressure_function(t_span=(0, 1), t_eval=t)
@@ -73,11 +74,11 @@ def plot_activation_pressure_function(t):
     ax.set_title("Activation fuction \u03C4(t)")
     ax.set_ylabel("Pressure [Pa]")
     ax.set_xlabel("Time [s]")
-    fig.savefig("activation_function.png")
+    fig.savefig(Path(outdir) / "activation_function.png")
 
     fig, ax = plt.subplots()
     ax.plot(t, pressure)
     ax.set_title("Pressure fuction p(t)")
     ax.set_ylabel("Pressure [Pa]")
     ax.set_xlabel("Time [s]")
-    fig.savefig("pressure_function.png")
+    fig.savefig(Path(outdir) / "pressure_function.png")

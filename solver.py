@@ -75,7 +75,7 @@ class NonlinearSolver:
 
     @staticmethod
     def default_solver_parameters():
-        linear_solver = "mumps"
+        linear_solver = "superlu_dist"
         return {
             "petsc": {
                 "ksp_type": "preonly",
@@ -87,13 +87,13 @@ class NonlinearSolver:
             "linear_solver": linear_solver,
             "preconditioner": "lu",
             "error_on_nonconvergence": False,
-            "relative_tolerance": 1e-8,
-            "absolute_tolerance": 1e-8,
-            "maximum_iterations": 20,
+            "relative_tolerance": 1e-5,
+            "absolute_tolerance": 1e-5,
+            "maximum_iterations": 50,
             "report": False,
             "krylov_solver": {
-                "absolute_tolerance": 1e-13,
-                "relative_tolerance": 1e-13,
+                "absolute_tolerance": 1e-10,
+                "relative_tolerance": 1e-10,
                 "maximum_iterations": 1000,
                 "monitor_convergence": False,
             },

@@ -1,4 +1,5 @@
 import math
+import warnings
 from collections import namedtuple
 from pathlib import Path
 from typing import Dict
@@ -6,7 +7,14 @@ from typing import Optional
 from typing import Tuple
 
 import dolfin
-import gmsh
+
+try:
+    import gmsh
+except ImportError:
+    warnings.warn("gmsh not installed - mesh generation not possible")
+    hash_gmsh = False
+else:
+    hash_gmsh = True
 import h5py
 import meshio
 from dolfin import FiniteElement  # noqa: F401
@@ -120,7 +128,8 @@ def create_benchmark_ellipsoid_mesh_gmsh(
     mu_base_epi=-math.acos(5 / 20),
     mesh_size_factor=1.0,
 ):
-
+    if not hash_gmsh:
+        raise ImportError("gmsh is not installed - unable to create mesh")
     gmsh.initialize()
 
     gmsh.option.setNumber("Geometry.CopyMeshingMethod", 1)

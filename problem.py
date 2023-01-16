@@ -92,6 +92,7 @@ class Problem:
         self.u_space = dolfin.FunctionSpace(mesh, element)
         self.u = dolfin.Function(self.u_space)
         self.u_test = dolfin.TestFunction(self.u_space)
+        self.du = dolfin.TrialFunction(self.u_space)
 
         self.u_old = dolfin.Function(self.u_space)
         self.v_old = dolfin.Function(self.u_space)
@@ -106,7 +107,18 @@ class Problem:
         E_dot = dolfin.variable(0.5 * (F.T * F_dot + F_dot.T * F))
 
         return (
-            dolfin.inner(self.parameters["p"] * ufl.cofac(F) * self.N, w)
+            (
+                dolfin.inner(
+                    dolfin.diff(self.material.strain_energy(F), F),
+                    dolfin.grad(w),
+                )
+                + dolfin.inner(
+                    F * dolfin.diff(self.material.W_visco(E_dot), E_dot),
+                    F.T * dolfin.grad(w),
+                )
+            )
+            * dolfin.dx
+            + dolfin.inner(self.parameters["p"] * ufl.cofac(F) * self.N, w)
             * self.ds(self.endo)
             + (
                 dolfin.inner(
@@ -123,21 +135,13 @@ class Problem:
                 )
             )
             * self.ds(self.top)
-            + dolfin.inner(
-                dolfin.diff(self.material.strain_energy(F), F),
-                dolfin.grad(w),
-            )
-            * dolfin.dx
-            + dolfin.inner(
-                F * dolfin.diff(self.material.W_visco(E_dot), E_dot),
-                F.T * dolfin.grad(w),
-            )
-            * dolfin.dx
         )
 
     def v(
         self,
-        as_vector: bool = False,
+        a,
+        v_old,
+        a_old,
     ) -> typing.Union[dolfin.Function, dolfin.Vector]:
         r"""
         Velocity computed using the generalized
@@ -154,21 +158,15 @@ class Problem:
         typing.Union[dolfin.Function, dolfin.Vector]
             The velocity
         """
-        if as_vector:
-            v_old = self.v_old.vector()
-            a_old = self.a_old.vector()
-            a = self.a(as_vector)
-        else:
-            v_old = self.v_old
-            a_old = self.a_old
-            a = self.a()
-
         dt = self.parameters["dt"]
         return v_old + (1 - self._gamma) * dt * a_old + self._gamma * dt * a
 
     def a(
         self,
-        as_vector: bool = False,
+        u,
+        u_old,
+        v_old,
+        a_old,
     ) -> typing.Union[dolfin.Function, dolfin.Vector]:
         r"""
         Acceleration computed using the generalized
@@ -185,17 +183,6 @@ class Problem:
         typing.Union[dolfin.Function, dolfin.Vector]
             The acceleration
         """
-        if as_vector:
-            u = self.u.vector()
-            u_old = self.u_old.vector()
-            v_old = self.v_old.vector()
-            a_old = self.a_old.vector()
-        else:
-            u = self.u
-            u_old = self.u_old
-            v_old = self.v_old
-            a_old = self.a_old
-
         dt = self.parameters["dt"]
         dt2 = dt**2
         beta = self._beta
@@ -205,8 +192,16 @@ class Problem:
         """Update old values of displacement, velocity
         and accelaration
         """
-        self.v_old.vector()[:] = self.v(as_vector=True)
-        self.a_old.vector()[:] = self.a(as_vector=True)
+        a = self.a(
+            u=self.u.vector(),
+            u_old=self.u.vector(),
+            v_old=self.v_old.vector(),
+            a_old=self.a_old.vector(),
+        )
+        v = self.v(a=a, v_old=self.v_old.vector(), a_old=self.a_old.vector())
+
+        self.a_old.vector()[:] = a
+        self.v_old.vector()[:] = v
         self.u_old.vector()[:] = self.u.vector()
 
     @property
@@ -232,6 +227,7 @@ class Problem:
     def _init_forms(self) -> None:
         """Initialize ufl forms"""
         w = self.u_test
+        du = self.du
 
         # Markers
         if self.geometry.markers is None:
@@ -240,18 +236,21 @@ class Problem:
         alpha_m = self.parameters["alpha_m"]
         alpha_f = self.parameters["alpha_f"]
 
+        a_new = self.a(u=du, u_old=self.u_old, v_old=self.v_old, a_old=self.a_old)
+        v_new = self.v(a=a_new, v_old=self.v_old, a_old=self.a_old)
+
         self._virtual_work = self._acceleration_form(
-            interpolate(self.a_old, self.a(), alpha_m),
+            interpolate(self.a_old, a_new, alpha_m),
             w,
         ) + self._form(
-            interpolate(self.u_old, self.u, alpha_f),
-            interpolate(self.v_old, self.v(), alpha_f),
+            interpolate(self.u_old, du, alpha_f),
+            interpolate(self.v_old, v_new, alpha_f),
             w,
         )
         self._jacobian = dolfin.derivative(
             self._virtual_work,
             self.u,
-            dolfin.TrialFunction(self.u_space),
+            du,
         )
 
         self._problem = NonlinearProblem(
