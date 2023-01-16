@@ -227,7 +227,6 @@ class Problem:
     def _init_forms(self) -> None:
         """Initialize ufl forms"""
         w = self.u_test
-        du = self.du
 
         # Markers
         if self.geometry.markers is None:
@@ -236,21 +235,21 @@ class Problem:
         alpha_m = self.parameters["alpha_m"]
         alpha_f = self.parameters["alpha_f"]
 
-        a_new = self.a(u=du, u_old=self.u_old, v_old=self.v_old, a_old=self.a_old)
+        a_new = self.a(u=self.u, u_old=self.u_old, v_old=self.v_old, a_old=self.a_old)
         v_new = self.v(a=a_new, v_old=self.v_old, a_old=self.a_old)
 
         self._virtual_work = self._acceleration_form(
             interpolate(self.a_old, a_new, alpha_m),
             w,
         ) + self._form(
-            interpolate(self.u_old, du, alpha_f),
+            interpolate(self.u_old, self.u, alpha_f),
             interpolate(self.v_old, v_new, alpha_f),
             w,
         )
         self._jacobian = dolfin.derivative(
             self._virtual_work,
             self.u,
-            du,
+            self.du,
         )
 
         self._problem = NonlinearProblem(
