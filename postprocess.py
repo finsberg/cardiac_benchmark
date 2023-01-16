@@ -249,7 +249,10 @@ class DataLoader:
     def path(self) -> str:
         return self._path.as_posix()
 
-    def von_Mises_stress_at_point(self, point):
+    def von_Mises_stress_at_point(
+        self,
+        point: typing.Tuple[float, float, float],
+    ) -> typing.List[float]:
         print(f"Compute von Mises stress at point {point}")
         stress = []
         for t in self.time_stamps_str:

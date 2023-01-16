@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Dict
 from typing import Optional
 from typing import Tuple
+from typing import Union
 
 import dolfin
 
@@ -324,10 +325,14 @@ def load_geometry(fname) -> "EllipsoidGeometry":
 
 class EllipsoidGeometry:
     """
-    Truncated ellipsoidal geometry, defined through the coordinates:
-    X1 = Rl(t) cos(mu)
-    X2 = Rs(t) sin(mu) cos(theta)
-    X3 = Rs(t) sin(mu) sin(theta)
+    Create a truncated ellipsoidal geometry,
+    defined through the coordinates:
+
+    .. math::
+        X1 = Rl(t) cos(mu)
+        X2 = Rs(t) sin(mu) cos(theta)
+        X3 = Rs(t) sin(mu) sin(theta)
+
     for t in [0, 1], mu in [0, mu_base] and theta in [0, 2pi).
     """
 
@@ -360,9 +365,23 @@ class EllipsoidGeometry:
     @classmethod
     def from_parameters(
         cls,
-        mesh_params=None,
-        fiber_params=None,
+        mesh_params: Optional[Dict[str, float]] = None,
+        fiber_params: Optional[Dict[str, Union[float, str]]] = None,
     ) -> "EllipsoidGeometry":
+        """Load geometry from parameters
+
+        Parameters
+        ----------
+        mesh_params : Optional[Dict[str, float]], optional
+            Parameters for the mesh, by default None
+        fiber_params : Optional[Dict[str, Union[float, str]]], optional
+            Parameters fro the fibers, by default None
+
+        Returns
+        -------
+        EllipsoidGeometry
+            The geometry
+        """
         mesh_params = mesh_params or {}
         mesh_parameters = EllipsoidGeometry.default_mesh_parameters()
         mesh_parameters.update(mesh_params)
@@ -390,14 +409,21 @@ class EllipsoidGeometry:
             setattr(obj, key, value)
         return obj
 
-    def save(self, fname):
+    def save(self, fname: Union[str, Path]) -> None:
+        """Save geometry to file
+
+        Parameters
+        ----------
+        fname : str
+            Name of file
+        """
         save_geometry(fname=fname, geo=self)
 
     def __repr__(self):
         return f"{self.__class__.__name__}()"
 
     @staticmethod
-    def default_mesh_parameters():
+    def default_mesh_parameters() -> Dict[str, float]:
         return dict(
             r_short_endo=0.025,
             r_short_epi=0.035,
@@ -412,7 +438,7 @@ class EllipsoidGeometry:
         )
 
     @staticmethod
-    def default_fiber_parameters():
+    def default_fiber_parameters() -> Dict[str, Union[float, str]]:
         return dict(
             function_space="Quadrature_4",
             alpha_endo=-60.0,

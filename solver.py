@@ -75,7 +75,7 @@ class NonlinearSolver:
 
     @staticmethod
     def default_solver_parameters():
-        linear_solver = "superlu_dist"
+        linear_solver = "mumps"
         return {
             "petsc": {
                 "ksp_type": "preonly",

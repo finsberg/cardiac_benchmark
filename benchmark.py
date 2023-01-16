@@ -16,12 +16,18 @@ dolfin.parameters["form_compiler"]["quadrature_degree"] = 4
 dolfin.parameters["form_compiler"]["cpp_optimize"] = True
 dolfin.parameters["form_compiler"]["representation"] = "uflacs"
 dolfin.parameters["form_compiler"]["optimize"] = True
-# flags = ["-O3", "-march=native"]
-# dolfin.parameters["form_compiler"]["cpp_optimize_flags"] = " ".join(flags)
-# TODO: Should we add more compiler flags?
 
 
-def solve(problem, tau, act, pressure, p, time, collector, store_freq: int = 1):
+def solve(
+    problem,
+    tau: dolfin.Constant,
+    act: np.ndarray,
+    pressure: np.ndarray,
+    p: dolfin.Constant,
+    time: np.ndarray,
+    collector: DataCollector,
+    store_freq: int = 1,
+) -> None:
 
     for i, (t, a, p_) in enumerate(zip(time, act, pressure)):
         dolfin.info(f"{i}: Solving for time {t:.3f} with tau = {a} and pressure = {p_}")
@@ -37,7 +43,7 @@ def solve(problem, tau, act, pressure, p, time, collector, store_freq: int = 1):
             collector.store(t)
 
 
-def get_geometry():
+def get_geometry() -> EllipsoidGeometry:
     path = HERE / "geometry.h5"
     if not path.is_file():
         geo = EllipsoidGeometry.from_parameters()
@@ -51,7 +57,7 @@ def run_benchmark(
     a_f: float = 18472.0,
     sigma_0: float = 1e5,
     outpath: str = "results.h5",
-):
+) -> None:
     outdir = Path(outpath).parent
     outdir.mkdir(parents=True, exist_ok=True)
     problem_parameters = Problem.default_parameters()
@@ -115,11 +121,12 @@ def run_benchmark(
     )
 
 
-def main():
-    outpath = "results.h5"
-    run_benchmark(outpath=outpath)
+def main() -> int:
+    outpath = "434007/result.h5"
+    # run_benchmark(outpath=outpath)
     loader = DataLoader(outpath)
     loader.postprocess_all()
+    return 0
 
 
 if __name__ == "__main__":

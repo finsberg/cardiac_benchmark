@@ -8,8 +8,10 @@ from material import HolzapfelOgden
 from solver import NonlinearProblem
 from solver import NonlinearSolver
 
+T = typing.TypeVar("T", dolfin.Function, dolfin.Vector)
 
-def interpolate(x0, x1, alpha: float):
+
+def interpolate(x0: T, x1: T, alpha: float):
     r"""Interpolate beteween :math:`x_0` and :math:`x_1`
     to find `math:`x_{1-\alpha}`
 
@@ -32,17 +34,18 @@ def interpolate(x0, x1, alpha: float):
 
 class Problem:
     """
-    Class for the mehcanics problem
+    Class for the mechanics problem
 
-    For time integration we employ the generalized :math:`alpha`-method
+    For time integration we employ the generalized :math:`alpha`-method [1]_.
 
     .. rubric:: Reference
 
-        Silvano Erlicher, Luca Bonaventura, Oreste Bursi.
+
+
+    .. [1] Silvano Erlicher, Luca Bonaventura, Oreste Bursi.
         The analysis of the Generalized-alpha method for
         non-linear dynamic problems. Computational Mechanics,
         Springer Verlag, 2002, 28, pp.83-104, doi:10.1007/s00466-001-0273-z
-
     """
 
     def __init__(
@@ -98,10 +101,10 @@ class Problem:
         self.v_old = dolfin.Function(self.u_space)
         self.a_old = dolfin.Function(self.u_space)
 
-    def _acceleration_form(self, a, w):
+    def _acceleration_form(self, a: dolfin.Function, w: dolfin.TestFunction):
         return dolfin.inner(self.parameters["rho"] * a, w) * dolfin.dx
 
-    def _form(self, u, v, w):
+    def _form(self, u: dolfin.Function, v: dolfin.Function, w: dolfin.TestFunction):
         F = dolfin.variable(dolfin.grad(u) + dolfin.Identity(3))
         F_dot = dolfin.grad(v)
         E_dot = dolfin.variable(0.5 * (F.T * F_dot + F_dot.T * F))
@@ -139,10 +142,10 @@ class Problem:
 
     def v(
         self,
-        a,
-        v_old,
-        a_old,
-    ) -> typing.Union[dolfin.Function, dolfin.Vector]:
+        a: T,
+        v_old: T,
+        a_old: T,
+    ) -> T:
         r"""
         Velocity computed using the generalized
         :math:`alpha`-method
@@ -150,13 +153,16 @@ class Problem:
             v_{i+1} = v_i + (1-\gamma) \Delta t a_i + \gamma \Delta t a_{i+1}
         Parameters
         ----------
-        as_vector : bool, optional
-            Flag for saying whether to return the
-            velocity as a function or a vector, by default False
+        a : T
+            Current acceleration
+        v_old : T
+            Previous velocity
+        a_old: T
+            Previous acceleration
         Returns
         -------
-        typing.Union[dolfin.Function, dolfin.Vector]
-            The velocity
+        T
+            The current velocity
         """
         dt = self.parameters["dt"]
         return v_old + (1 - self._gamma) * dt * a_old + self._gamma * dt * a
@@ -175,13 +181,18 @@ class Problem:
             a_{i+1} = \frac{u_{i+1} - (u_i + \Delta t v_i + (0.5 - \beta) \Delta t^2 a_i)}{\beta \Delta t^2}
         Parameters
         ----------
-        as_vector : bool, optional
-            Flag for saying whether to return the
-            acceleration as a function or a vector, by default False
+        u : T
+            Current displacement
+        u_old : T
+            Previous displacement
+        v_old : T
+            Previous velocity
+        a_old: T
+            Previous acceleration
         Returns
         -------
-        typing.Union[dolfin.Function, dolfin.Vector]
-            The acceleration
+        T
+            The current acceleration
         """
         dt = self.parameters["dt"]
         dt2 = dt**2
@@ -190,7 +201,7 @@ class Problem:
 
     def _update_fields(self) -> None:
         """Update old values of displacement, velocity
-        and accelaration
+        and acceleration
         """
         a = self.a(
             u=self.u.vector(),
@@ -206,22 +217,27 @@ class Problem:
 
     @property
     def ds(self):
+        """Surface measure"""
         return dolfin.ds(domain=self.geometry.mesh, subdomain_data=self.geometry.ffun)
 
     @property
     def endo(self):
+        """Marker for the endocardium"""
         return self.geometry.markers["ENDO"][0]
 
     @property
     def epi(self):
+        """Marker for the epicardium"""
         return self.geometry.markers["EPI"][0]
 
     @property
     def top(self):
+        """Marker for the top or base"""
         return self.geometry.markers["BASE"][0]
 
     @property
     def N(self):
+        """Facet Noraml"""
         return dolfin.FacetNormal(self.geometry.mesh)
 
     def _init_forms(self) -> None:
@@ -263,9 +279,18 @@ class Problem:
             parameters=self.solver_parameters,
         )
 
-    def von_Mises(self):
+    def von_Mises(self) -> ufl.Coefficient:
+        """Compute the von Mises stress tensor
+
+        Returns
+        -------
+        ufl.Coefficient
+            _description_
+        """
         u = self.u
-        v = self.v()
+        a = self.a(u=self.u, u_old=self.u_old, v_old=self.v_old, a_old=self.a_old)
+        v = self.v(a=a, v_old=self.v_old, a_old=self.a_old)
+
         F = dolfin.variable(dolfin.grad(u) + dolfin.Identity(3))
         J = dolfin.det(F)
         F_dot = dolfin.grad(v)
