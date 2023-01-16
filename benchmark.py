@@ -10,10 +10,12 @@ from postprocess import DataCollector
 from postprocess import DataLoader
 from problem import Problem
 
+HERE = Path(__file__).absolute().parent
 
 dolfin.parameters["form_compiler"]["quadrature_degree"] = 4
 dolfin.parameters["form_compiler"]["cpp_optimize"] = True
 dolfin.parameters["form_compiler"]["representation"] = "uflacs"
+dolfin.parameters["form_compiler"]["optimize"] = True
 # flags = ["-O3", "-march=native"]
 # dolfin.parameters["form_compiler"]["cpp_optimize_flags"] = " ".join(flags)
 # TODO: Should we add more compiler flags?
@@ -36,7 +38,7 @@ def solve(problem, tau, act, pressure, p, time, collector, store_freq: int = 1):
 
 
 def get_geometry():
-    path = Path("geometry.h5")
+    path = HERE / "geometry.h5"
     if not path.is_file():
         geo = EllipsoidGeometry.from_parameters()
         geo.save(path)
@@ -50,7 +52,8 @@ def run_benchmark(
     sigma_0: float = 1e5,
     outpath: str = "results.h5",
 ):
-
+    outdir = Path(outpath).parent
+    outdir.mkdir(parents=True, exist_ok=True)
     problem_parameters = Problem.default_parameters()
     pressure_parameters = pressure_model.default_parameters()
     material_parameters = HolzapfelOgden.default_parameters()
@@ -64,7 +67,7 @@ def run_benchmark(
     dt = 0.001
     time = np.arange(dt, 1, dt)
 
-    pressure_model.plot_activation_pressure_function(t=time)
+    pressure_model.plot_activation_pressure_function(t=time, outdir=outdir)
 
     _, state = pressure_model.activation_pressure_function(
         (0, 1),
@@ -108,7 +111,7 @@ def run_benchmark(
         p=p,
         time=time,
         collector=collector,
-        store_freq=10,
+        store_freq=1,
     )
 
 
