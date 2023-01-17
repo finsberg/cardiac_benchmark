@@ -4,7 +4,7 @@ API Reference
 benchmark
 ----------
 
-.. automodule:: benchmark
+.. automodule:: cardiac_benchmark.benchmark
     :members:
     :inherited-members:
 
@@ -12,7 +12,7 @@ benchmark
 geometry
 --------
 
-.. automodule:: geometry
+.. automodule:: cardiac_benchmark.geometry
     :members:
     :inherited-members:
 
@@ -20,7 +20,7 @@ geometry
 material
 --------
 
-.. automodule:: material
+.. automodule:: cardiac_benchmark.material
     :members:
     :inherited-members:
 
@@ -28,32 +28,32 @@ material
 microstructure
 --------------
 
-.. automodule:: microstructure
+.. automodule:: cardiac_benchmark.microstructure
     :members:
     :inherited-members:
 
 pressure_model
 --------------
-.. automodule:: pressure_model
+.. automodule:: cardiac_benchmark.pressure_model
     :members:
     :inherited-members:
 
 problem
 -------
-.. automodule:: problem
+.. automodule:: cardiac_benchmark.problem
     :members:
     :inherited-members:
 
 
 solver
 ------
-.. automodule:: solver
+.. automodule:: cardiac_benchmark.solver
     :members:
     :inherited-members:
 
 
-run_cases
+step2
 ---------
-.. automodule:: run_cases
+.. automodule:: cardiac_benchmark.step2
     :members:
     :inherited-members:
