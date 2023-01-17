@@ -1,5 +1,5 @@
-from collections import namedtuple
 from typing import Dict
+from typing import NamedTuple
 from typing import Tuple
 from typing import Union
 
@@ -7,7 +7,10 @@ import dolfin
 import numpy as np
 
 
-Microstructure = namedtuple("Microstructure", "f0, s0, n0")
+class Microstructure(NamedTuple):
+    f0: dolfin.Function
+    s0: dolfin.Function
+    n0: dolfin.Function
 
 
 def check_mesh_params(mesh_params: Dict[str, float]):

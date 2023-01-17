@@ -22,7 +22,7 @@ from dolfin import FiniteElement  # noqa: F401
 from dolfin import tetrahedron  # noqa: F401
 from dolfin import VectorElement  # noqa: F401
 
-from microstructure import create_microstructure
+from .microstructure import create_microstructure
 
 GmshGeometry = namedtuple(
     "GmshGeometry",

@@ -1,9 +1,38 @@
 import math
-import typing
+import pprint
 from pathlib import Path
+from typing import Dict
+from typing import NamedTuple
+from typing import Optional
+from typing import Tuple
+from typing import Union
 
 import numpy as np
 import scipy.integrate
+
+
+class PressureActivationSolution(NamedTuple):
+    time: np.ndarray
+    state: np.ndarray
+    parameters: Dict[str, float]
+
+    @property
+    def act(self) -> np.ndarray:
+        return self.state[0, :]
+
+    @property
+    def pressure(self) -> np.ndarray:
+        return self.state[1, :]
+
+    def save(self, fname: Union[Path, str]) -> None:
+        np.save(
+            fname,
+            {
+                "time": self.time,
+                "state": self.state,
+                "parameters": self.parameters,
+            },
+        )
 
 
 def default_parameters():
@@ -22,14 +51,16 @@ def default_parameters():
 
 
 def activation_pressure_function(
-    t_span: typing.Tuple[float, float],
-    t_eval: typing.Optional[np.ndarray] = None,
-    parameters: typing.Optional[typing.Dict[str, float]] = None,
-):
+    t_span: Tuple[float, float],
+    t_eval: Optional[np.ndarray] = None,
+    parameters: Optional[Dict[str, float]] = None,
+) -> PressureActivationSolution:
 
     params = default_parameters()
     if parameters is not None:
         params.update(parameters)
+
+    print(f"Solving pressure model with parameters: {pprint.pformat(params)}")
 
     f = (
         lambda t: 0.25
@@ -57,28 +88,8 @@ def activation_pressure_function(
         t_eval=t_eval,
         method="Radau",
     )
-
-    return (res.t, res.y.squeeze())
-
-
-def plot_activation_pressure_function(t, outdir):
-    import matplotlib.pyplot as plt
-
-    t, state = activation_pressure_function(t_span=(0, 1), t_eval=t)
-
-    act = state[0, :]
-    pressure = state[1, :]
-
-    fig, ax = plt.subplots()
-    ax.plot(t, act)
-    ax.set_title("Activation fuction \u03C4(t)")
-    ax.set_ylabel("Pressure [Pa]")
-    ax.set_xlabel("Time [s]")
-    fig.savefig(Path(outdir) / "activation_function.png")
-
-    fig, ax = plt.subplots()
-    ax.plot(t, pressure)
-    ax.set_title("Pressure fuction p(t)")
-    ax.set_ylabel("Pressure [Pa]")
-    ax.set_xlabel("Time [s]")
-    fig.savefig(Path(outdir) / "pressure_function.png")
+    return PressureActivationSolution(
+        time=res.t,
+        state=res.y.squeeze(),
+        parameters=params,
+    )

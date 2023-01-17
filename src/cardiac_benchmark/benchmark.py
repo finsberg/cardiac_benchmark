@@ -1,14 +1,14 @@
 from pathlib import Path
+from typing import Union
 
 import dolfin
 import numpy as np
 
-import pressure_model
-from geometry import EllipsoidGeometry
-from material import HolzapfelOgden
-from postprocess import DataCollector
-from postprocess import DataLoader
-from problem import Problem
+from . import postprocess
+from . import pressure_model
+from .geometry import EllipsoidGeometry
+from .material import HolzapfelOgden
+from .problem import Problem
 
 HERE = Path(__file__).absolute().parent
 
@@ -25,7 +25,7 @@ def solve(
     pressure: np.ndarray,
     p: dolfin.Constant,
     time: np.ndarray,
-    collector: DataCollector,
+    collector: postprocess.DataCollector,
     store_freq: int = 1,
 ) -> None:
 
@@ -43,20 +43,20 @@ def solve(
             collector.store(t)
 
 
-def get_geometry() -> EllipsoidGeometry:
-    path = HERE / "geometry.h5"
+def get_geometry(path: Path) -> EllipsoidGeometry:
     if not path.is_file():
         geo = EllipsoidGeometry.from_parameters()
         geo.save(path)
     return EllipsoidGeometry.from_file(path)
 
 
-def run_benchmark(
+def run(
     alpha_epi: float = 1e8,
     eta: float = 1e2,
     a_f: float = 18472.0,
     sigma_0: float = 1e5,
-    outpath: str = "results.h5",
+    outpath: Union[str, Path] = "results.h5",
+    geometry_path: Union[str, Path] = "geometry.h5",
 ) -> None:
     outdir = Path(outpath).parent
     outdir.mkdir(parents=True, exist_ok=True)
@@ -73,20 +73,29 @@ def run_benchmark(
     dt = 0.001
     time = np.arange(dt, 1, dt)
 
-    pressure_model.plot_activation_pressure_function(t=time, outdir=outdir)
-
-    _, state = pressure_model.activation_pressure_function(
+    pm = pressure_model.activation_pressure_function(
         (0, 1),
         t_eval=time - float(problem_parameters["alpha_f"]) * dt,
         parameters=pressure_parameters,
     )
-    act = state[0, :]
-    pressure = state[1, :]
+    pm.save(outdir / "pressure_model.npy")
+    postprocess.plot_activation_pressure_function(
+        t=time,
+        act=pm.act,
+        pressure=pm.pressure,
+        outdir=outdir,
+    )
+
     p = dolfin.Constant(0.0)
     problem_parameters["p"] = p
 
-    geo = get_geometry()
-    material = HolzapfelOgden(f0=geo.f0, n0=geo.n0, tau=tau)
+    geo = get_geometry(Path(geometry_path))
+    material = HolzapfelOgden(
+        f0=geo.f0,
+        n0=geo.n0,
+        tau=tau,
+        parameters=material_parameters,
+    )
 
     problem = Problem(
         geometry=geo,
@@ -103,31 +112,19 @@ def run_benchmark(
         msg = "Expected output path to be to type HDF5 with suffix .h5, got {result_filepath.suffix}"
         raise OSError(msg)
     result_filepath.parent.mkdir(exist_ok=True)
-    collector = DataCollector(
+    collector = postprocess.DataCollector(
         result_filepath,
         problem=problem,
-        pressure_parameters=pressure_parameters,
+        pressure_parameters=pm.parameters,
     )
 
     solve(
         problem=problem,
         tau=tau,
-        act=act,
-        pressure=pressure,
+        act=pm.act,
+        pressure=pm.pressure,
         p=p,
         time=time,
         collector=collector,
         store_freq=1,
     )
-
-
-def main() -> int:
-    outpath = "434007/result.h5"
-    # run_benchmark(outpath=outpath)
-    loader = DataLoader(outpath)
-    loader.postprocess_all()
-    return 0
-
-
-if __name__ == "__main__":
-    main()

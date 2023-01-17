@@ -1,6 +1,10 @@
-import os
-import typing
 from pathlib import Path
+from typing import Dict
+from typing import List
+from typing import NamedTuple
+from typing import Optional
+from typing import Tuple
+from typing import Union
 
 import dolfin
 import h5py
@@ -11,13 +15,13 @@ from dolfin import FiniteElement  # noqa: F401
 from dolfin import tetrahedron  # noqa: F401
 from dolfin import VectorElement  # noqa: F401
 
-from geometry import load_geometry
-from geometry import save_geometry
-from material import HolzapfelOgden
-from problem import Problem
+from .geometry import load_geometry
+from .geometry import save_geometry
+from .material import HolzapfelOgden
+from .problem import Problem
 
 
-class SavedProblem(typing.NamedTuple):
+class SavedProblem(NamedTuple):
     problem: Problem
     time_stamps_str: np.ndarray
     time_stamps: np.ndarray
@@ -27,7 +31,7 @@ class SavedProblem(typing.NamedTuple):
 def save_problem(
     fname,
     problem: Problem,
-    pressure_parameters: typing.Dict[str, float],
+    pressure_parameters: Dict[str, float],
 ):
     path = Path(fname)
     if path.is_file():
@@ -113,7 +117,7 @@ class DataCollector:
         self,
         path,
         problem: Problem,
-        pressure_parameters: typing.Dict[str, float],
+        pressure_parameters: Dict[str, float],
     ) -> None:
         self._path = Path(path)
         if self._path.is_file():
@@ -155,12 +159,16 @@ class DataCollector:
 
 
 class DataLoader:
-    def __init__(self, path) -> None:
-        self._path = Path(path)
+    def __init__(
+        self,
+        result_file: Union[str, Path],
+        outdir: Optional[Union[str, Path]] = None,
+    ) -> None:
+        self._path = Path(result_file)
         if not self._path.is_file():
-            raise FileNotFoundError(f"File {path} does not exist")
+            raise FileNotFoundError(f"File {result_file} does not exist")
 
-        self._problem = load_problem(path)
+        self._problem = load_problem(self._path)
 
         if self.geometry.mesh is None:
             raise RuntimeError("Cannot load mesh")
@@ -251,8 +259,8 @@ class DataLoader:
 
     def von_Mises_stress_at_point(
         self,
-        point: typing.Tuple[float, float, float],
-    ) -> typing.List[float]:
+        point: Tuple[float, float, float],
+    ) -> List[float]:
         print(f"Compute von Mises stress at point {point}")
         stress = []
         for t in self.time_stamps_str:
@@ -377,7 +385,7 @@ class DataLoader:
             time_stamps_cmp=time_stamps_cmp,
         )
 
-    def postprocess_all(self, folder: typing.Optional[os.PathLike] = None):
+    def postprocess_all(self, folder: Optional[Union[str, Path]] = None):
 
         if folder is None:
             folder = self._path.with_suffix("")
@@ -601,6 +609,23 @@ def plot_volume_comparison(
         axi.legend()
     ax[0].set_title("Volume throug time")
     fig.savefig(fname, dpi=300)
+
+
+def plot_activation_pressure_function(t, act, pressure, outdir):
+
+    fig, ax = plt.subplots()
+    ax.plot(t, act)
+    ax.set_title("Activation fuction \u03C4(t)")
+    ax.set_ylabel("Pressure [Pa]")
+    ax.set_xlabel("Time [s]")
+    fig.savefig(Path(outdir) / "activation_function.png")
+
+    fig, ax = plt.subplots()
+    ax.plot(t, pressure)
+    ax.set_title("Pressure fuction p(t)")
+    ax.set_ylabel("Pressure [Pa]")
+    ax.set_xlabel("Time [s]")
+    fig.savefig(Path(outdir) / "pressure_function.png")
 
 
 if __name__ == "__main__":

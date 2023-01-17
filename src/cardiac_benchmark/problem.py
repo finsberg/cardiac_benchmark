@@ -3,10 +3,10 @@ import typing
 import dolfin
 import ufl
 
-from geometry import EllipsoidGeometry
-from material import HolzapfelOgden
-from solver import NonlinearProblem
-from solver import NonlinearSolver
+from .geometry import EllipsoidGeometry
+from .material import HolzapfelOgden
+from .solver import NonlinearProblem
+from .solver import NonlinearSolver
 
 T = typing.TypeVar("T", dolfin.Function, dolfin.Vector)
 
