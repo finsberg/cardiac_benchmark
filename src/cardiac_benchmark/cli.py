@@ -58,6 +58,7 @@ def step1(
     outdir: Optional[Path] = typer.Option(None),
     run_benchmark: bool = True,
     run_postprocess: bool = True,
+    run_comparison: bool = True,
     alpha_m: float = 0.2,
     alpha_f: float = 0.4,
     geometry_path: Optional[Path] = typer.Option(None),
@@ -92,9 +93,12 @@ def step1(
     if run_benchmark:
         benchmark.run(**params)  # type: ignore
 
+    loader = DataLoader(outpath)
     if run_postprocess:
-        loader = DataLoader(outpath)
         loader.postprocess_all(folder=outdir)
+
+    if run_comparison:
+        loader.compare_results(folder=outdir)
 
     return 0
 

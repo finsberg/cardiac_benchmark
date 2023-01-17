@@ -319,8 +319,9 @@ class DataLoader:
 
     def compare_results(
         self,
-        disp_path="cardiac_benchmark/2021_10_29/results/displacement_vs_time.npz",
-        vol_path="cardiac_benchmark/2021_10_29/results/volume_vs_time.npz",
+        folder: Optional[Union[str, Path]] = None,
+        disp_path="cardiac_benchmark/2022_09_29/displacement_points.npz",
+        vol_path="cardiac_benchmark/2022_09_29/computed_vols.npz",
     ):
         """Compare results with provided results for
         compononentwise displacement and volumes
@@ -339,6 +340,10 @@ class DataLoader:
         FileNotFoundError
             If any of the files are not found
         """
+        if folder is None:
+            folder = self._path.with_suffix("")
+        outfolder = Path(folder)
+        outfolder.mkdir(parents=True, exist_ok=True)
 
         # Displacements
         disp_path = Path(disp_path)
@@ -377,12 +382,14 @@ class DataLoader:
             up0_cmp=up0_cmp,
             up1_cmp=up1_cmp,
             time_stamps_cmp=time_stamps_cmp,
+            fname=outfolder / "componentwise_displacement_comparison.png",
         )
         plot_volume_comparison(
             volumes=vols,
             time_stamps=self.time_stamps,
             volumes_cmp=volumes_cmp,
             time_stamps_cmp=time_stamps_cmp,
+            fname=outfolder / "volume_comparison.png",
         )
 
     def postprocess_all(self, folder: Optional[Union[str, Path]] = None):
@@ -626,9 +633,3 @@ def plot_activation_pressure_function(t, act, pressure, outdir):
     ax.set_ylabel("Pressure [Pa]")
     ax.set_xlabel("Time [s]")
     fig.savefig(Path(outdir) / "pressure_function.png")
-
-
-if __name__ == "__main__":
-    loader = DataLoader("results.h5")
-    loader.postprocess_all()
-    loader.compare_results()
