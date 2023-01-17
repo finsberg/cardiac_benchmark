@@ -320,8 +320,8 @@ class DataLoader:
     def compare_results(
         self,
         folder: Optional[Union[str, Path]] = None,
-        disp_path="cardiac_benchmark/2022_09_29/displacement_points.npz",
-        vol_path="cardiac_benchmark/2022_09_29/computed_vols.npz",
+        disp_path="data/displacement_points.npz",
+        vol_path="data/computed_vols.npz",
     ):
         """Compare results with provided results for
         compononentwise displacement and volumes
