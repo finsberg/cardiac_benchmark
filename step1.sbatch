@@ -29,9 +29,9 @@ module use /cm/shared/ex3-modules/0.6.1/modulefiles
 module load python-fenics-dolfin-2019.1.0.post0
 
 
-SCRATCH_DIRECTORY=/global/D1/homes/${USER}/cardiac_benchmark/case${1}-${SLURM_JOBID}
+SCRATCH_DIRECTORY=/global/D1/homes/${USER}/cardiac_benchmark/case${1}/${SLURM_JOBID}
 mkdir -p ${SCRATCH_DIRECTORY}
 echo ${SCRATCH_DIRECTORY}
 echo ${SLURM_JOBNAME}
-srun ${SLURM_SUBMIT_DIR}/venv/bin/python ${SLURM_SUBMIT_DIR}/step1.py 1 -o "${SCRATCH_DIRECTORY}"
+srun ${SLURM_SUBMIT_DIR}/venv/bin/cardiac-benchmark step ${1} -o "${SCRATCH_DIRECTORY}"
 cp slurm-output/${SLURM_JOBID}-${SLURM_JOBNAME}-std* ${SCRATCH_DIRECTORY}
