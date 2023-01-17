@@ -11,7 +11,7 @@ authors = [
 ]
 license = {file = "LICENSE"}
 readme = "README.md"
-requires-python = ">=3.8"
+requires-python = ">=3.7"
 dependencies = [
     "typer",
     "rich",
@@ -19,7 +19,8 @@ dependencies = [
     "matplotlib",
     "scipy",
     "h5py",
-    "meshio"
+    "meshio",
+    "importlib-metadata ~= 1.0 ; python_version < '3.8'"
 ]
 
 [project.scripts]

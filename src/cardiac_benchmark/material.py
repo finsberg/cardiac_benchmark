@@ -1,10 +1,13 @@
-import typing
-
 import dolfin
+import typing
 import ufl
 
 
-def heaviside(x: ufl.Coefficient, k: float = 100) -> ufl.Coefficient:
+def heaviside(
+    x: ufl.Coefficient,
+    k: dolfin.Constant,
+    use_exp: bool = True,
+) -> ufl.Coefficient:
     r"""
     Heaviside function
 
@@ -17,8 +20,10 @@ def heaviside(x: ufl.Coefficient, k: float = 100) -> ufl.Coefficient:
         \frac{1}{1 + e^{-k (x - 1)}}
     """
 
-    # return dolfin.conditional(dolfin.ge(x, 0.0), 1.0, 0.0)
-    return 1 / (1 + dolfin.exp(-k * (x - 1)))
+    if use_exp:
+        return 1 / (1 + dolfin.exp(-k * (x - 1)))
+    else:
+        return dolfin.conditional(dolfin.ge(x, 0.0), 1.0, 0.0)
 
 
 class HolzapfelOgden:
@@ -79,7 +84,6 @@ class HolzapfelOgden:
         n0: dolfin.Function,
         tau: dolfin.Constant = dolfin.Constant(0.0),
         parameters: typing.Optional[typing.Dict[str, dolfin.Constant]] = None,
-        k: float = 100.0,
     ) -> None:
 
         parameters = parameters or {}
@@ -103,6 +107,7 @@ class HolzapfelOgden:
             "b_fn": dolfin.Constant(11.436),
             "kappa": dolfin.Constant(1e6),
             "eta": dolfin.Constant(1e2),
+            "k": dolfin.Constant(100.0),
         }
 
     def W_1(self, I1):
@@ -116,7 +121,12 @@ class HolzapfelOgden:
         a = self.parameters[f"a_{direction}"]
         b = self.parameters[f"b_{direction}"]
 
-        return a / (2.0 * b) * heaviside(I4) * (dolfin.exp(b * (I4 - 1) ** 2) - 1.0)
+        return (
+            a
+            / (2.0 * b)
+            * heaviside(I4, k=self.parameters["k"])
+            * (dolfin.exp(b * (I4 - 1) ** 2) - 1.0)
+        )
 
     def W_8(self, I8):
         """

@@ -1,4 +1,9 @@
-from importlib.metadata import metadata
+try:
+    # importlib.metadata is present in Python 3.8 and later
+    import importlib.metadata as importlib_metadata
+except ImportError:
+    # use the shim package importlib-metadata pre-3.8
+    import importlib_metadata as importlib_metadata
 
 from . import benchmark
 from . import cli
@@ -9,9 +14,9 @@ from . import postprocess
 from . import pressure_model
 from . import problem
 from . import solver
-from . import step1
+from . import step2
 
-meta = metadata("cardiac-benchmark")
+meta = importlib_metadata.metadata("cardiac-benchmark")
 __version__ = meta["Version"]
 __author__ = meta["Author"]
 __license__ = meta["License"]
@@ -29,5 +34,5 @@ __all__ = [
     "pressure_model",
     "problem",
     "solver",
-    "step1",
+    "step2",
 ]
