@@ -320,8 +320,8 @@ class DataLoader:
     def compare_results(
         self,
         folder: Optional[Union[str, Path]] = None,
-        disp_path="data/displacement_points.npz",
-        vol_path="data/computed_vols.npz",
+        disp_path: Union[str, Path] = "data/displacement_points.npz",
+        vol_path: Union[str, Path] = "data/computed_vols.npz",
     ):
         """Compare results with provided results for
         compononentwise displacement and volumes
@@ -367,9 +367,9 @@ class DataLoader:
         vols = []
         up0 = []
         up1 = []
-        for t in self.time_stamps:
+        for t in self.time_stamps_str:
             print(f"Time {t}", end="\r")
-            u, v, a = self.get(t)
+            u = self.get_u(t)
 
             up0.append(u(p0))
             up1.append(u(p1))
