@@ -126,7 +126,8 @@ def step2(
     outpath = outdir / "result.h5"
 
     params = benchmark.default_parameters()
-    params.update(_step2.cases[case])
+    assert 1 <= case <= 16, "Case must be a number between 1 and 16"
+    params.update(_step2.cases[case - 1])
     params["outpath"] = outpath.as_posix()
     params["geometry_path"] = geometry_path.as_posix()
     params["t_sys"] = 0.005
@@ -136,6 +137,7 @@ def step2(
 
     parameters = params.copy()
     parameters["step"] = 2
+    parameters["case"] = case
     parameters["outdir"] = outdir.as_posix()
     parameters["timestamp"] = datetime.datetime.now().isoformat()
 
