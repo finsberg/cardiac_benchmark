@@ -61,6 +61,7 @@ def step1(
     run_comparison: bool = True,
     alpha_m: float = 0.2,
     alpha_f: float = 0.4,
+    pressure: benchmark.Pressure = benchmark.Pressure.bestel,
     geometry_path: Optional[Path] = typer.Option(None),
 ) -> int:
 
@@ -78,6 +79,7 @@ def step1(
     params = benchmark.default_parameters()
     params["alpha_m"] = alpha_m
     params["alpha_f"] = alpha_f
+    params["pressure"] = pressure
     params["outpath"] = outpath.as_posix()
     params["geometry_path"] = geometry_path.as_posix()
 
@@ -109,9 +111,10 @@ def step2(
     outdir: Optional[Path] = typer.Option(None),
     run_benchmark: bool = True,
     run_postprocess: bool = True,
-    geometry_path: Optional[Path] = typer.Option(None),
     alpha_m: float = 0.2,
     alpha_f: float = 0.4,
+    pressure: benchmark.Pressure = benchmark.Pressure.bestel,
+    geometry_path: Optional[Path] = typer.Option(None),
 ) -> int:
 
     if outdir is not None:
@@ -134,6 +137,7 @@ def step2(
     params["t_dias"] = 0.319
     params["alpha_m"] = alpha_m
     params["alpha_f"] = alpha_f
+    params["pressure"] = pressure
 
     parameters = params.copy()
     parameters["step"] = 2

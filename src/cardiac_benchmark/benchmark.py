@@ -1,8 +1,10 @@
-import dolfin
-import numpy as np
+from enum import Enum
 from pathlib import Path
 from typing import Dict
 from typing import Union
+
+import dolfin
+import numpy as np
 
 from . import postprocess
 from . import pressure_model
@@ -16,6 +18,11 @@ dolfin.parameters["form_compiler"]["quadrature_degree"] = 4
 dolfin.parameters["form_compiler"]["cpp_optimize"] = True
 dolfin.parameters["form_compiler"]["representation"] = "uflacs"
 dolfin.parameters["form_compiler"]["optimize"] = True
+
+
+class Pressure(str, Enum):
+    bestel = "bestel"
+    none = "none"
 
 
 def solve(
@@ -85,6 +92,7 @@ def default_parameters() -> Dict[str, Union[float, str]]:
         alpha_f=0.4,
         alpha_endo_fiber=-60.0,
         alpha_epi_fiber=60.0,
+        pressure="bestel",
         outpath="results.h5",
         geometry_path="geometry.h5",
     )
@@ -122,6 +130,7 @@ def run(
     alpha_f: float = 0.4,
     alpha_endo_fiber: float = -60.0,
     alpha_epi_fiber: float = 60.0,
+    pressure: Pressure = Pressure.bestel,
     outpath: Union[str, Path] = "results.h5",
     geometry_path: Union[str, Path] = "geometry.h5",
 ) -> None:
@@ -172,6 +181,10 @@ def run(
         t_eval=t_eval,
         parameters=pressure_parameters,
     )
+    if Pressure[pressure] == Pressure.none:
+        # We set the pressure to zero
+        pm.pressure[:] = 0.0
+
     pm.save(outdir / "pressure_model.npy")
     postprocess.plot_activation_pressure_function(
         t=time,

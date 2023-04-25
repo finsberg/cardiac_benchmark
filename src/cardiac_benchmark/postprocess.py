@@ -345,21 +345,8 @@ class DataLoader:
         outfolder = Path(folder)
         outfolder.mkdir(parents=True, exist_ok=True)
 
-        # Displacements
-        disp_path = Path(disp_path)
-        if not disp_path.is_file():
-            raise FileNotFoundError(f"Cannot find file {disp_path}")
-        results_disp = np.load(disp_path, allow_pickle=True)
-        time_stamps_cmp = results_disp["times.npy"]
-        results_disp_dict = results_disp["disp_dict.npy"].item()
-        up0_cmp = np.array(list(results_disp_dict["top"].values())).T
-        up1_cmp = np.array(list(results_disp_dict["middle"].values())).T
-
-        # Volumes
-        vol_path = Path(vol_path)
-        if not vol_path.is_file():
-            raise FileNotFoundError(f"Cannot find file {vol_path}")
-        volumes_cmp = np.load(vol_path, allow_pickle=True)["vol_lst.npy"]
+        vol_true = load_true_volume_data(vol_path=vol_path)
+        disp_true = load_true_displacement_data(disp_path=disp_path)
 
         p0 = (0.025, 0.03, 0)
         p1 = (0, 0.03, 0)
@@ -379,16 +366,16 @@ class DataLoader:
             up0=np.array(up0),
             up1=np.array(up1),
             time_stamps=self.time_stamps,
-            up0_cmp=up0_cmp,
-            up1_cmp=up1_cmp,
-            time_stamps_cmp=time_stamps_cmp,
+            up0_cmp=disp_true.up0,
+            up1_cmp=disp_true.up1,
+            time_stamps_cmp=disp_true.time,
             fname=outfolder / "componentwise_displacement_comparison.png",
         )
         plot_volume_comparison(
             volumes=vols,
             time_stamps=self.time_stamps,
-            volumes_cmp=volumes_cmp,
-            time_stamps_cmp=time_stamps_cmp,
+            volumes_cmp=vol_true,
+            time_stamps_cmp=disp_true.time,
             fname=outfolder / "volume_comparison.png",
         )
 
@@ -449,6 +436,33 @@ class DataLoader:
             time_stamps=self.time_stamps,
             fname=outfolder / "volume.png",
         )
+
+
+class DisplacementData(NamedTuple):
+    up0: np.ndarray
+    up1: np.ndarray
+    time: np.ndarray
+
+
+def load_true_displacement_data(disp_path: Union[str, Path]) -> DisplacementData:
+    disp_path = Path(disp_path)
+    if not disp_path.is_file():
+        raise FileNotFoundError(f"Cannot find file {disp_path}")
+    results_disp = np.load(disp_path, allow_pickle=True)
+    time = results_disp["times.npy"]
+    results_disp_dict = results_disp["disp_dict.npy"].item()
+    up0 = np.array(list(results_disp_dict["top"].values())).T
+    up1 = np.array(list(results_disp_dict["middle"].values())).T
+
+    return DisplacementData(up0=up0, up1=up1, time=time)
+
+
+def load_true_volume_data(vol_path: Union[str, Path]) -> np.ndarray:
+    vol_path = Path(vol_path)
+    if not vol_path.is_file():
+        raise FileNotFoundError(f"Cannot find file {vol_path}")
+    results = np.load(vol_path, allow_pickle=True)
+    return results["vol_lst.npy"]
 
 
 def plot_componentwise_displacement(
@@ -518,67 +532,124 @@ def plot_componentwise_displacement_comparison(
     np.save(Path(basefname + "_up0").with_suffix(".npy"), up0)
     np.save(Path(basefname + "_up1").with_suffix(".npy"), up1)
 
-    fig, ax = plt.subplots(2, 2, sharex=True)
-    ax[0, 0].plot(time_stamps, up0[:, 0], label="x")
-    ax[0, 0].plot(time_stamps, up0[:, 1], label="y")
-    ax[0, 0].plot(time_stamps, up0[:, 2], label="z")
-    ax[0, 0].plot(time_stamps_cmp, up0_cmp[:, 0], linestyle="--", label="x (cmp)")
-    ax[0, 0].plot(time_stamps_cmp, up0_cmp[:, 1], linestyle="--", label="y (cmp)")
-    ax[0, 0].plot(time_stamps_cmp, up0_cmp[:, 2], linestyle="--", label="z (cmp)")
+    fig, ax = plt.subplots(2, 2, sharex=True, sharey="row")
+    (lx,) = ax[0, 0].plot(time_stamps, up0[:, 0], label="x", color="tab:blue")
+    (ly,) = ax[0, 0].plot(time_stamps, up0[:, 1], label="y", color="tab:orange")
+    (lz,) = ax[0, 0].plot(time_stamps, up0[:, 2], label="z", color="tab:green")
+    (lx_,) = ax[0, 0].plot(
+        time_stamps_cmp,
+        up0_cmp[:, 0],
+        linestyle="--",
+        label="x (true)",
+        color="tab:red",
+    )
+    (ly_,) = ax[0, 0].plot(
+        time_stamps_cmp,
+        up0_cmp[:, 1],
+        linestyle="--",
+        label="y (true)",
+        color="tab:purple",
+    )
+    (lz_,) = ax[0, 0].plot(
+        time_stamps_cmp,
+        up0_cmp[:, 2],
+        linestyle="--",
+        label="z (true)",
+        color="tab:brown",
+    )
     ax[0, 0].set_title("$u(p_0)$[m]")
 
-    ax[1, 0].plot(
+    ax[0, 1].plot(time_stamps, up1[:, 0], label="x", color="tab:blue")
+    ax[0, 1].plot(time_stamps, up1[:, 1], label="y", color="tab:orange")
+    ax[0, 1].plot(time_stamps, up1[:, 2], label="z", color="tab:green")
+    ax[0, 1].plot(
+        time_stamps_cmp,
+        up1_cmp[:, 0],
+        linestyle="--",
+        label="x (true)",
+        color="tab:red",
+    )
+    ax[0, 1].plot(
+        time_stamps_cmp,
+        up1_cmp[:, 1],
+        linestyle="--",
+        label="y (true)",
+        color="tab:purple",
+    )
+    ax[0, 1].plot(
+        time_stamps_cmp,
+        up1_cmp[:, 2],
+        linestyle="--",
+        label="z (true)",
+        color="tab:brown",
+    )
+    ax[0, 1].set_title("$u(p_1)$[m]")
+
+    (ldx,) = ax[1, 0].plot(
         time_stamps,
         up0[:, 0] - np.interp(time_stamps, time_stamps_cmp, up0_cmp[:, 0]),
-        label="x - x (cmp)",
+        label="x - x (true)",
+        color="tab:pink",
     )
-    ax[1, 0].plot(
+    (ldy,) = ax[1, 0].plot(
         time_stamps,
         up0[:, 1] - np.interp(time_stamps, time_stamps_cmp, up0_cmp[:, 1]),
-        label="y - y (cmp)",
+        label="y - y (true)",
+        color="tab:gray",
     )
-    ax[1, 0].plot(
+    (ldz,) = ax[1, 0].plot(
         time_stamps,
         up0[:, 2] - np.interp(time_stamps, time_stamps_cmp, up0_cmp[:, 2]),
-        label="z - z (cmp)",
+        label="z - z (true)",
+        color="tab:olive",
     )
     ax[1, 0].set_xlabel("Time [s]")
-
-    ax[0, 1].plot(time_stamps, up1[:, 0], label="x")
-    ax[0, 1].plot(time_stamps, up1[:, 1], label="y")
-    ax[0, 1].plot(time_stamps, up1[:, 2], label="z")
-    ax[0, 1].plot(time_stamps_cmp, up1_cmp[:, 0], linestyle="--", label="x (cmp)")
-    ax[0, 1].plot(time_stamps_cmp, up1_cmp[:, 1], linestyle="--", label="y (cmp)")
-    ax[0, 1].plot(time_stamps_cmp, up1_cmp[:, 2], linestyle="--", label="z (cmp)")
-    ax[0, 1].set_title("$u(p_1)$[m]")
 
     ax[1, 1].plot(
         time_stamps,
         up1[:, 0] - np.interp(time_stamps, time_stamps_cmp, up1_cmp[:, 0]),
-        label="x - x (cmp)",
+        label="x - x (true)",
+        color="tab:pink",
     )
     ax[1, 1].plot(
         time_stamps,
         up1[:, 1] - np.interp(time_stamps, time_stamps_cmp, up1_cmp[:, 1]),
-        label="y - y (cmp)",
+        label="y - y (true)",
+        color="tab:gray",
     )
     ax[1, 1].plot(
         time_stamps,
         up1[:, 2] - np.interp(time_stamps, time_stamps_cmp, up1_cmp[:, 2]),
-        label="z - z (cmp)",
+        label="z - z (true)",
+        color="tab:olive",
     )
 
     for axi in ax.flatten():
-        axi.legend()
+        # axi.legend()
         axi.grid()
-    fig.tight_layout()
+    fig.subplots_adjust(right=0.78)
+    fig.legend(
+        (lx, ly, lz, lx_, ly_, lz_, ldx, ldy, ldz),
+        (
+            "x",
+            "y",
+            "z",
+            "x (true)",
+            "y (true)",
+            "z (true)",
+            "x - x (true)",
+            "y - y (true)",
+            "z - z (true)",
+        ),
+        loc="center right",
+    )
     fig.savefig(fname, dpi=300)
 
 
 def plot_volume(volumes, time_stamps, fname="volume.png"):
     fname = Path(fname).with_suffix(".png")
     basefname = fname.with_suffix("").as_posix()
-    np.save(Path(basefname + "_volumes").with_suffix(".npy"), volumes)
+    np.save(Path(basefname).with_suffix(".npy"), volumes)
 
     fig, ax = plt.subplots()
     ax.plot(time_stamps, volumes, label="volume")
@@ -599,22 +670,23 @@ def plot_volume_comparison(
 ):
     fname = Path(fname).with_suffix(".png")
     basefname = fname.with_suffix("").as_posix()
-    np.save(Path(basefname + "_volumes").with_suffix(".npy"), volumes)
+    np.save(Path(basefname).with_suffix(".npy"), volumes)
 
     fig, ax = plt.subplots(2, 1, sharex=True)
     ax[0].plot(time_stamps, volumes, label="volume")
-    ax[0].plot(time_stamps_cmp, volumes_cmp, label="volume (cmp)")
+    ax[0].plot(time_stamps_cmp, volumes_cmp, label="volume (true)")
     ax[1].plot(
         time_stamps,
         volumes - np.interp(time_stamps, time_stamps_cmp, volumes_cmp),
-        label="volume - volume (cmp)",
+        label="volume - volume (true)",
     )
-    ax[0].set_ylabel("Volume [m^3]")
+    ax[0].set_ylabel("Volume [$m^3$]")
     ax[1].set_xlabel("Time [s]")
     for axi in ax:
         axi.grid()
         axi.legend()
-    ax[0].set_title("Volume throug time")
+    ax[0].set_title("Volume through time")
+    fig.tight_layout()
     fig.savefig(fname, dpi=300)
 
 
