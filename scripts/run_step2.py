@@ -7,6 +7,7 @@ here = Path(__file__).parent.absolute()
 # args = ["--alpha-m=0.0 --alpha-f=0.0", ""]
 args = ["--pressure=none"]
 
+
 for arg in args:
-    for i in range(1, 16):
+    for i in range(1, 17):
         sp.run(["sbatch", (here / "step2.sbatch").as_posix(), str(i), arg])
