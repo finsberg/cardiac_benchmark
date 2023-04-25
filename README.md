@@ -28,7 +28,7 @@ Run the following command to start the container interactively and mount the cur
 ```
 docker run --rm -v $PWD:/home/shared -w /home/shared -it finsberg/cardiac-benchmark
 ```
-This should spin up a container with everything installed. You will also find the [Dockerfile](Dockerfile) used for creating this image in this repo.
+This should spin up a container with everything installed. You will also find the [Dockerfile](docker/Dockerfile) used for creating this image in this repo.
 
 #### Known issues
 If you get the following error
@@ -61,8 +61,24 @@ pre-commit install
 
 ## Running the benchmark
 
+You can run the command line interface directly, e.g
 ```
-python benchmark.py
+cardiac-benchmark step1
+```
+To see all steps that you can run, do
+```
+cardiac-benchmark --help
+```
+and to see the specific options for a given step you can do (for e.g `step1`)
+```
+cardiac-bencmark step1 --help
+```
+
+You can also use the python API
+```python
+import cardiac_benchmark
+
+cardiac_benchmark.benchmark.run()
 ```
 
 ## License
@@ -73,4 +89,3 @@ MIT
 
 - Henrik Finsberg (henriknf@simula.no)
 - Joakim Sundnes (sundnes@simula.no)
-- Jonas van den Brink (jvbrink@simula.no)
