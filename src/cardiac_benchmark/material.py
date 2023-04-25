@@ -44,38 +44,41 @@ class HolzapfelOgden:
 
     Notes
     -----
-    Modified version of the original model from Holzapfel and Ogden [1]_.
+    Modified version of the original model from Holzapfel and Ogden [2]_.
 
     The strain energy density function is given by
-    .. math::
-        \Psi(I_1, I_{4\mathbf{f}_0}, I_{4\mathbf{s}_0}, I_{8\mathbf{f}_0\mathbf{s}_0})
-        = \frac{a}{2 b} \left( e^{ b (I_1 - 3)}  -1 \right)
-        + \frac{a_f}{2 b_f} \mathcal{H}(I_{4\mathbf{f}_0} - 1)
-        \left( e^{ b_f (I_{4\mathbf{f}_0} - 1)_+^2} -1 \right)
-        + \frac{a_s}{2 b_s} \mathcal{H}(I_{4\mathbf{s}_0} - 1)
-        \left( e^{ b_s (I_{4\mathbf{s}_0} - 1)_+^2} -1 \right)
-        + \frac{a_{fs}}{2 b_{fs}} \left( e^{ b_{fs}
-        I_{8 \mathbf{f}_0 \mathbf{s}_0}^2} -1 \right)
+
+        .. math::
+            \Psi(I_1, I_{4\mathbf{f}_0}, I_{4\mathbf{s}_0}, I_{8\mathbf{f}_0\mathbf{s}_0})
+            = \frac{a}{2 b} \left( e^{ b (I_1 - 3)}  -1 \right)
+            + \frac{a_f}{2 b_f} \mathcal{H}(I_{4\mathbf{f}_0} - 1)
+            \left( e^{ b_f (I_{4\mathbf{f}_0} - 1)_+^2} -1 \right)
+            + \frac{a_s}{2 b_s} \mathcal{H}(I_{4\mathbf{s}_0} - 1)
+            \left( e^{ b_s (I_{4\mathbf{s}_0} - 1)_+^2} -1 \right)
+            + \frac{a_{fs}}{2 b_{fs}} \left( e^{ b_{fs}
+            I_{8 \mathbf{f}_0 \mathbf{s}_0}^2} -1 \right)
 
     where
-    .. math::
-        (x)_+ = \max\{x,0\}
+
+        .. math::
+            (x)_+ = \max\{x,0\}
 
     and
 
-    .. math::
-        \mathcal{H}(x) = \begin{cases}
-            1, & \text{if $x > 0$} \\
-            0, & \text{if $x \leq 0$}
-        \end{cases}
+        .. math::
+            \mathcal{H}(x) = \begin{cases}
+                1, & \text{if $x > 0$} \\
+                0, & \text{if $x \leq 0$}
+            \end{cases}
 
     is the Heaviside function.
-    .. [1] Holzapfel, Gerhard A., and Ray W. Ogden.
-        "Constitutive modelling of passive myocardium:
-        a structurally based framework for material characterization.
-        "Philosophical Transactions of the Royal Society of London A:
-        Mathematical, Physical and Engineering Sciences 367.1902 (2009):
-        3445-3475.
+
+        .. [2] Holzapfel, Gerhard A., and Ray W. Ogden.
+            "Constitutive modelling of passive myocardium:
+            a structurally based framework for material characterization.
+            "Philosophical Transactions of the Royal Society of London A:
+            Mathematical, Physical and Engineering Sciences 367.1902 (2009):
+            3445-3475.
     """
 
     def __init__(
