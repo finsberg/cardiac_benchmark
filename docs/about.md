@@ -19,4 +19,4 @@ and the following stopping criteria for the Krylov solver
 
 ## Time integrations
 
-For time integration we use the Generalized $\alpha$-method [Erlicher, 2002](https://doi.org/10.1007/s00466-001-0273-z) with $\alpha_m = 0.2$ and $\alpha_f = 0.4$.
+For time integration we use the Generalized $\alpha$-method [Erlicher, 2002](https://doi.org/10.1007/s00466-001-0273-z) with $\alpha_m = 0.2$ and $\alpha_f = 0.4$ and a time step $\Delta t = 0.001$
