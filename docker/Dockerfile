@@ -1,9 +1,4 @@
-FROM finsberg/fenics-gmsh
-
-# We upgrade pip and setuptools
-RUN python3 -m pip install pip setuptools --upgrade
-
-RUN python -m pip install scipy matplotlib meshio h5py --no-binary=h5py
+FROM ghcr.io/scientificcomputing/fenics-gmsh:2023-04-21
 
 # We set the working directory to install docker dependencies
 WORKDIR /tmp/
