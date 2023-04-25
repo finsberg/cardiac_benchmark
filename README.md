@@ -4,6 +4,8 @@ This is the contribution to the cardiac mechanics benchmark from Simula Research
 
 ## Installation
 
+### Conda
+
 Create the conda environment using the `environment.yml` file
 ```
 conda env create -f environment.yml
@@ -12,6 +14,12 @@ Activate the enviroment
 ```
 conda activate cardiac-benchmark
 ```
+and finally install the `cardiac-benchmark` package (from the root of the repository)
+```
+python3 -m pip install .
+```
+
+### Docker
 
 ### Note for M1 Mac
 FEniCS is currently not available through conda for M1 mac. If you are using M1 mac then you can use the provided docker image.

@@ -1,6 +1,5 @@
-import typing
-
 import dolfin
+import typing
 import ufl
 
 from .geometry import EllipsoidGeometry
@@ -69,7 +68,7 @@ class Problem:
             `Problem.default_parameters`
         function_space : str, optional
             A string of the form `"{family}_{degree}` representing
-            the function space for the displacement, by default "P_2"
+            the function space for the displacement, by default "P_1"
         """
         self.geometry = geometry
         self.material = material
