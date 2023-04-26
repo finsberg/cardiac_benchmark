@@ -4,7 +4,7 @@ FROM ghcr.io/scientificcomputing/fenics-gmsh:2023-04-21
 WORKDIR /tmp/
 
 # Install the Python-module
-RUN git clone --branch ${REPO_BRANCH} --single-branch https://github.com/finsberg/cardiac_benchmark
+COPY . /tmp
 RUN python3 -m pip install  --no-cache-dir ./cardiac_benchmark
 
 
