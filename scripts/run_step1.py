@@ -1,6 +1,10 @@
 import subprocess as sp
+from pathlib import Path
 
-args = ["--alpha-m=0.0 --alpha-f=0.0", ""]
+here = Path(__file__).parent.absolute()
+(Path.cwd() / "slurm-output").mkdir(exist_ok=True)
+# args = ["--alpha-m=0.0 --alpha-f=0.0", ""]
+args = ["--pressure=none"]
 
 for arg in args:
-    sp.run(["sbatch", "step1.sbatch", arg])
+    sp.run(["sbatch", (here / "step1.sbatch").as_posix(), arg])

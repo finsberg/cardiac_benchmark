@@ -20,7 +20,7 @@ dependencies = [
     "scipy",
     "h5py",
     "meshio",
-    "importlib-metadata ~= 1.0 ; python_version < '3.8'"
+    "importlib-metadata; python_version < '3.8'"
 ]
 
 [project.scripts]
