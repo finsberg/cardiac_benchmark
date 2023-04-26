@@ -5,7 +5,7 @@ WORKDIR /tmp/
 
 # Install the Python-module
 COPY . /tmp
-RUN python3 -m pip install  --no-cache-dir ./cardiac_benchmark
+RUN python3 -m pip install  --no-cache-dir .
 
 
 # We remove the contents of the temporary directory to minimize the size of the image
