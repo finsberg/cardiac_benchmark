@@ -22,7 +22,7 @@ python3 -m pip install .
 ### Docker
 
 ### Note for M1 Mac
-FEniCS is currently not available through conda for M1 mac. If you are using M1 mac then you can use the provided docker image.
+FEniCS is currently not available through conda for M1 mac (unless you use Rosetta 2). If you are using M1 mac then you can use the provided docker image.
 
 Run the following command to start the container interactively and mount the current directory
 ```
