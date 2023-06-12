@@ -1,10 +1,9 @@
+import dolfin
+import numpy as np
 from enum import Enum
 from pathlib import Path
 from typing import Dict
 from typing import Union
-
-import dolfin
-import numpy as np
 
 from . import postprocess
 from . import pressure_model
@@ -211,7 +210,7 @@ def run(
     problem = Problem(
         geometry=geo,
         material=material,
-        function_space="P_1",
+        function_space="P_2",
         parameters=problem_parameters,
     )
     problem.solve()
