@@ -9,6 +9,7 @@ import typer
 
 from . import benchmark
 from . import step2 as _step2
+from .geometry import EllipsoidGeometry
 from .postprocess import DataLoader
 
 app = typer.Typer()
@@ -64,7 +65,6 @@ def step1(
     pressure: benchmark.Pressure = benchmark.Pressure.bestel,
     geometry_path: Optional[Path] = typer.Option(None),
 ) -> int:
-
     if outdir is not None:
         outdir = Path(outdir).absolute()
     else:
@@ -116,7 +116,6 @@ def step2(
     pressure: benchmark.Pressure = benchmark.Pressure.bestel,
     geometry_path: Optional[Path] = typer.Option(None),
 ) -> int:
-
     if outdir is not None:
         outdir = Path(outdir).absolute()
     else:
@@ -159,3 +158,20 @@ def step2(
         loader.postprocess_all(folder=outdir)
 
     return 0
+
+
+@app.command(help="Create geometry")
+def create_geometry(
+    path: Path,
+    alpha_endo: float = -60.0,
+    alpha_epi: float = 60.0,
+    function_space: str = "Quadrature_4",
+):
+    geo = EllipsoidGeometry.from_parameters(
+        fiber_params={
+            "alpha_endo": alpha_endo,
+            "alpha_epi": alpha_epi,
+            "function_space": function_space,
+        },
+    )
+    geo.save(path)
