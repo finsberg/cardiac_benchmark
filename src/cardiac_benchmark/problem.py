@@ -1,5 +1,6 @@
-import dolfin
 import typing
+
+import dolfin
 import ufl
 
 from .geometry import EllipsoidGeometry
@@ -32,19 +33,17 @@ def interpolate(x0: T, x1: T, alpha: float):
 
 
 class Problem:
-    """
+    r"""
     Class for the mechanics problem
 
-    For time integration we employ the generalized :math:`alpha`-method [1]_.
+    For time integration we employ the generalized :math:`\alpha`-method [1]_.
 
     .. rubric:: Reference
 
-
-
-    .. [1] Silvano Erlicher, Luca Bonaventura, Oreste Bursi.
-        The analysis of the Generalized-alpha method for
-        non-linear dynamic problems. Computational Mechanics,
-        Springer Verlag, 2002, 28, pp.83-104, doi:10.1007/s00466-001-0273-z
+        .. [1] Silvano Erlicher, Luca Bonaventura, Oreste Bursi.
+            The analysis of the Generalized-alpha method for
+            non-linear dynamic problems. Computational Mechanics,
+            Springer Verlag, 2002, 28, pp.83-104, doi:10.1007/s00466-001-0273-z
     """
 
     def __init__(
@@ -149,8 +148,8 @@ class Problem:
         Velocity computed using the generalized
         :math:`alpha`-method
 
-            .. math::
-                v_{i+1} = v_i + (1-\gamma) \Delta t a_i + \gamma \Delta t a_{i+1}
+        .. math::
+            v_{i+1} = v_i + (1-\gamma) \Delta t a_i + \gamma \Delta t a_{i+1}
 
         Parameters
         ----------
@@ -179,8 +178,8 @@ class Problem:
         Acceleration computed using the generalized
         :math:`alpha`-method
 
-            .. math::
-                a_{i+1} = \frac{u_{i+1} - (u_i + \Delta t v_i + (0.5 - \beta) \Delta t^2 a_i)}{\beta \Delta t^2}
+        .. math::
+            a_{i+1} = \frac{u_{i+1} - (u_i + \Delta t v_i + (0.5 - \beta) \Delta t^2 a_i)}{\beta \Delta t^2}
 
         Parameters
         ----------
