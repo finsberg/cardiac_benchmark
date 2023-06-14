@@ -107,35 +107,22 @@ class Problem:
         F_dot = dolfin.grad(v)
         E_dot = dolfin.variable(0.5 * (F.T * F_dot + F_dot.T * F))
 
+        P = dolfin.diff(self.material.strain_energy(F), F) + F * dolfin.diff(
+            self.material.W_visco(E_dot),
+            E_dot,
+        )
+        epi = dolfin.dot(self.parameters["alpha_epi"] * u, self.N) + dolfin.dot(
+            self.parameters["beta_epi"] * v,
+            self.N,
+        )
+        top = self.parameters["alpha_top"] * u + self.parameters["beta_top"] * v
+
         return (
-            (
-                dolfin.inner(
-                    dolfin.diff(self.material.strain_energy(F), F),
-                    dolfin.grad(w),
-                )
-                + dolfin.inner(
-                    F * dolfin.diff(self.material.W_visco(E_dot), E_dot),
-                    F.T * dolfin.grad(w),
-                )
-            )
-            * dolfin.dx
+            dolfin.inner(P, dolfin.grad(w)) * dolfin.dx
             + dolfin.inner(self.parameters["p"] * ufl.cofac(F) * self.N, w)
             * self.ds(self.endo)
-            + (
-                dolfin.inner(
-                    dolfin.dot(self.parameters["alpha_epi"] * u, self.N)
-                    + dolfin.dot(self.parameters["beta_epi"] * v, self.N),
-                    dolfin.dot(w, self.N),
-                )
-            )
-            * self.ds(self.epi)
-            + (
-                dolfin.inner(
-                    self.parameters["alpha_top"] * u + self.parameters["beta_top"] * v,
-                    w,
-                )
-            )
-            * self.ds(self.top)
+            + dolfin.inner(epi * w, self.N) * self.ds(self.epi)
+            + dolfin.inner(top, w) * self.ds(self.top)
         )
 
     def v(
@@ -256,7 +243,7 @@ class Problem:
         a_new = self.a(u=self.u, u_old=self.u_old, v_old=self.v_old, a_old=self.a_old)
         v_new = self.v(a=a_new, v_old=self.v_old, a_old=self.a_old)
 
-        self._virtual_work = self._acceleration_form(
+        virtual_work = self._acceleration_form(
             interpolate(self.a_old, a_new, alpha_m),
             w,
         ) + self._form(
@@ -264,17 +251,13 @@ class Problem:
             interpolate(self.v_old, v_new, alpha_f),
             w,
         )
-        self._jacobian = dolfin.derivative(
-            self._virtual_work,
+        jacobian = dolfin.derivative(
+            virtual_work,
             self.u,
             self.du,
         )
 
-        self._problem = NonlinearProblem(
-            J=self._jacobian,
-            F=self._virtual_work,
-            bcs=[],
-        )
+        self._problem = NonlinearProblem(J=jacobian, F=virtual_work, bcs=[])
         self.solver = NonlinearSolver(
             self._problem,
             self.u,

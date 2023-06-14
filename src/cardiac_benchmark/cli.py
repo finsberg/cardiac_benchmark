@@ -64,6 +64,7 @@ def step1(
     alpha_f: float = 0.4,
     pressure: benchmark.Pressure = benchmark.Pressure.bestel,
     geometry_path: Optional[Path] = typer.Option(None),
+    function_space: str = "P_1",
 ) -> int:
     if outdir is not None:
         outdir = Path(outdir).absolute()
@@ -82,6 +83,7 @@ def step1(
     params["pressure"] = pressure
     params["outpath"] = outpath.as_posix()
     params["geometry_path"] = geometry_path.as_posix()
+    params["function_space"] = function_space
 
     parameters = params.copy()
     parameters["step"] = 1
@@ -115,6 +117,7 @@ def step2(
     alpha_f: float = 0.4,
     pressure: benchmark.Pressure = benchmark.Pressure.bestel,
     geometry_path: Optional[Path] = typer.Option(None),
+    function_space: str = "P_1",
 ) -> int:
     if outdir is not None:
         outdir = Path(outdir).absolute()
@@ -137,6 +140,7 @@ def step2(
     params["alpha_m"] = alpha_m
     params["alpha_f"] = alpha_f
     params["pressure"] = pressure
+    params["function_space"] = function_space
 
     parameters = params.copy()
     parameters["step"] = 2
