@@ -95,6 +95,7 @@ def default_parameters() -> Dict[str, Union[float, str]]:
         pressure="bestel",
         outpath="results.h5",
         geometry_path="geometry.h5",
+        function_space="P_1",
     )
 
 
@@ -133,6 +134,7 @@ def run(
     pressure: Pressure = Pressure.bestel,
     outpath: Union[str, Path] = "results.h5",
     geometry_path: Union[str, Path] = "geometry.h5",
+    function_space: str = "P_1",
 ) -> None:
     outdir = Path(outpath).parent
     outdir.mkdir(parents=True, exist_ok=True)
@@ -211,7 +213,7 @@ def run(
     problem = Problem(
         geometry=geo,
         material=material,
-        function_space="P_1",
+        function_space=function_space,
         parameters=problem_parameters,
     )
     problem.solve()
