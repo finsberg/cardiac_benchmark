@@ -7,7 +7,7 @@ import cardiac_benchmark
 here = Path(__file__).absolute().parent
 
 
-resultdir = Path("/global/D1/homes/henriknf/cardiac_benchmark/step1/470680")
+resultdir = Path("/global/D1/homes/henriknf/cardiac_benchmark/step1/491494")
 disp_path = here / ".." / "data" / "displacement_points.npz"
 vol_path = here / ".." / "data" / "computed_vols.npz"
 
@@ -50,4 +50,4 @@ np.save(outdir / "up1.npy", up1)
 np.save(outdir / "time.npy", time)
 np.save(outdir / "vol.npy", vol)
 shutil.make_archive(base_name="step1", format="zip", root_dir=outdir)
-shutil.copy("step1.zip", resultdir.parent / "step1_zero_pressure.zip")
+shutil.copy("step1.zip", resultdir.parent / "step1_P1.zip")
