@@ -207,7 +207,7 @@ class Problem:
         """
         a = self.a(
             u=self.u.vector(),
-            u_old=self.u.vector(),
+            u_old=self.u_old.vector(),
             v_old=self.v_old.vector(),
             a_old=self.a_old.vector(),
         )
