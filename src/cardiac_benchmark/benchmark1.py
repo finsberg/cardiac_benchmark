@@ -22,7 +22,8 @@ dolfin.parameters["form_compiler"]["optimize"] = True
 
 class Pressure(str, Enum):
     bestel = "bestel"
-    none = "none"
+    zero_pressure = "zero_pressure"
+    zero_active = "zero_active"
 
 
 def solve(
@@ -35,7 +36,6 @@ def solve(
     collector: postprocess.DataCollector,
     store_freq: int = 1,
 ) -> None:
-
     for i, (t, a, p_) in enumerate(zip(time, act, pressure)):
         dolfin.info(f"{i}: Solving for time {t:.3f} with tau = {a} and pressure = {p_}")
 
@@ -183,17 +183,22 @@ def run(
         t_eval=t_eval,
         parameters=pressure_parameters,
     )
-    if Pressure[pressure] == Pressure.none:
+    if Pressure[pressure] == Pressure.zero_pressure:
         # We set the pressure to zero
         pm.pressure[:] = 0.0
 
-    pm.save(outdir / "pressure_model.npy")
-    postprocess.plot_activation_pressure_function(
-        t=time,
-        act=pm.act,
-        pressure=pm.pressure,
-        outdir=outdir,
-    )
+    elif Pressure[pressure] == Pressure.zero_active:
+        pm.act[:] = 0.0
+
+    if dolfin.MPI.rank(dolfin.MPI.comm_world) == 0:
+        pm.save(outdir / "pressure_model.npy")
+
+        postprocess.plot_activation_pressure_function(
+            t=time,
+            act=pm.act,
+            pressure=pm.pressure,
+            outdir=outdir,
+        )
 
     p = dolfin.Constant(0.0)
     problem_parameters["p"] = p
@@ -209,20 +214,21 @@ def run(
         tau=tau,
         parameters=material_parameters,
     )
-
     problem = Problem(
         geometry=geo,
         material=material,
         function_space=function_space,
         parameters=problem_parameters,
     )
+
     problem.solve()
 
     result_filepath = Path(outpath)
     if result_filepath.suffix != ".h5":
-        msg = "Expected output path to be to type HDF5 with suffix .h5, got {result_filepath.suffix}"
+        msg = f"Expected output path to be to type HDF5 with suffix .h5, got {result_filepath.suffix}"
         raise OSError(msg)
     result_filepath.parent.mkdir(exist_ok=True)
+
     collector = postprocess.DataCollector(
         result_filepath,
         problem=problem,

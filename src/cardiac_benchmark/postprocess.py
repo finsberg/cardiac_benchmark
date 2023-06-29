@@ -1,3 +1,4 @@
+import weakref
 from pathlib import Path
 from typing import Dict
 from typing import List
@@ -28,6 +29,16 @@ class SavedProblem(NamedTuple):
     signature: ufl.finiteelement.FiniteElementBase
 
 
+def close_h5file(h5file):
+    if h5file is not None:
+        h5file.close()
+
+
+def close_h5pyfile(h5pyfile):
+    if h5pyfile is not None:
+        h5pyfile.__exit__()
+
+
 def save_problem(
     fname,
     problem: Problem,
@@ -38,21 +49,26 @@ def save_problem(
         path.unlink()
     save_geometry(fname, problem.geometry)
 
-    with h5py.File(fname, "a") as h5file:
-        group = h5file.create_group("problem_parameters")
-        for k, v in problem.parameters.items():
-            group.create_dataset(k, data=float(v))
+    comm = dolfin.MPI.comm_world
+    if problem.geometry.mesh is not None:
+        comm = problem.geometry.mesh.mpi_comm()
 
-        group = h5file.create_group("material_parameters")
-        for k, v in problem.material.parameters.items():
-            group.create_dataset(k, data=float(v))
+    if dolfin.MPI.rank(comm) == 0:
+        with h5py.File(fname, "a") as h5file:
+            group = h5file.create_group("problem_parameters")
+            for k, v in problem.parameters.items():
+                group.create_dataset(k, data=float(v))
 
-        group = h5file.create_group("pressure_parameters")
-        for k, v in pressure_parameters.items():
-            group.create_dataset(k, data=float(v))
+            group = h5file.create_group("material_parameters")
+            for k, v in problem.material.parameters.items():
+                group.create_dataset(k, data=float(v))
 
-        h5file.create_group("p")
-        h5file.create_group("tau")
+            group = h5file.create_group("pressure_parameters")
+            for k, v in pressure_parameters.items():
+                group.create_dataset(k, data=float(v))
+
+            h5file.create_group("p")
+            h5file.create_group("tau")
 
 
 def load_problem(fname) -> SavedProblem:
@@ -61,31 +77,41 @@ def load_problem(fname) -> SavedProblem:
         raise FileNotFoundError(f"File {path} does not exist")
 
     required_keys = ["mesh", "u", "problem_parameters", "material_parameters"]
-    with h5py.File(path, "r") as h5file:
 
-        # Check that we have the required keys
-        for key in required_keys:
-            if key not in h5file:
-                raise ValueError(f"Missing {key} in results file. Cannot load data")
+    material_parameters = {}  # type: ignore
+    problem_parameters = {}  # type: ignore
+    signature = None  # type: ignore
+    time_stamps_str = None  # type: ignore
+    time_stamps = None  # type: ignore
+    if dolfin.MPI.rank(dolfin.MPI.comm_world) == 0:
+        with h5py.File(path, "r") as h5file:
+            # Check that we have the required keys
+            for key in required_keys:
+                if key not in h5file:
+                    raise ValueError(f"Missing {key} in results file. Cannot load data")
 
-        time_stamps_str = sorted(h5file["u"].keys(), key=lambda x: float(x))
-        time_stamps = np.array(time_stamps_str, dtype=float)
+            time_stamps_str = sorted(h5file["u"].keys(), key=lambda x: float(x))
+            time_stamps = np.array(time_stamps_str, dtype=float)
 
-        if len(time_stamps_str) == 0:
-            raise ValueError(
-                "No timestamps found in results file. Cannot load data",
-            )
+            if len(time_stamps_str) == 0:
+                raise ValueError(
+                    "No timestamps found in results file. Cannot load data",
+                )
 
-        signature = h5file["u"][time_stamps_str[0]].attrs["signature"]
-        signature = eval(signature)
+            signature = h5file["u"][time_stamps_str[0]].attrs["signature"]
+            signature = eval(signature)
 
-        material_parameters = {}
-        for k, v in h5file["material_parameters"].items():
-            material_parameters[k] = v[...].tolist()
+            for k, v in h5file["material_parameters"].items():
+                material_parameters[k] = v[...].tolist()
 
-        problem_parameters = {}
-        for k, v in h5file["problem_parameters"].items():
-            problem_parameters[k] = v[...].tolist()
+            for k, v in h5file["problem_parameters"].items():
+                problem_parameters[k] = v[...].tolist()
+
+    material_parameters = dolfin.MPI.comm_world.bcast(material_parameters, root=0)
+    signature = dolfin.MPI.comm_world.bcast(signature, root=0)
+    time_stamps = dolfin.MPI.comm_world.bcast(time_stamps, root=0)
+    time_stamps_str = dolfin.MPI.comm_world.bcast(time_stamps_str, root=0)
+    problem_parameters = dolfin.MPI.comm_world.bcast(problem_parameters, root=0)
 
     geometry = load_geometry(path)
 
@@ -120,9 +146,15 @@ class DataCollector:
         pressure_parameters: Dict[str, float],
     ) -> None:
         self._path = Path(path)
-        if self._path.is_file():
-            # Delete file if is allready exist
-            self._path.unlink()
+        self._comm = dolfin.MPI.comm_world
+
+        dolfin.MPI.barrier(self._comm)
+        if self._comm.rank == 0:
+            if self._path.is_file():
+                # Delete file if is allready exist
+                self._path.unlink()
+        dolfin.MPI.barrier(self._comm)
+
         self._path = path
         self.u = problem.u_old
         self.v = problem.v_old
@@ -130,7 +162,6 @@ class DataCollector:
         self.p = problem.parameters["p"]
         self.tau = problem.material.tau
 
-        self._comm = dolfin.MPI.comm_world
         if problem.geometry.mesh is not None:
             self._comm = problem.geometry.mesh.mpi_comm()
 
@@ -153,9 +184,10 @@ class DataCollector:
             h5file.write(self.v, f"/v/{t:.4f}")
             h5file.write(self.a, f"/a/{t:.4f}")
 
-        with h5py.File(self.path, "a") as h5file:
-            h5file["p"].create_dataset(f"{t:.4f}", data=float(self.p))
-            h5file["tau"].create_dataset(f"{t:.4f}", data=float(self.tau))
+        if dolfin.MPI.rank(self._comm) == 0:
+            with h5py.File(self.path, "a") as h5file:
+                h5file["p"].create_dataset(f"{t:.4f}", data=float(self.p))
+                h5file["tau"].create_dataset(f"{t:.4f}", data=float(self.tau))
 
 
 class DataLoader:
@@ -164,6 +196,8 @@ class DataLoader:
         result_file: Union[str, Path],
         outdir: Optional[Union[str, Path]] = None,
     ) -> None:
+        self._h5file_py = None
+        self._h5file = None
         self._path = Path(result_file)
         if not self._path.is_file():
             raise FileNotFoundError(f"File {result_file} does not exist")
@@ -174,6 +208,7 @@ class DataLoader:
             raise RuntimeError("Cannot load mesh")
 
         mesh = self.geometry.mesh
+        self.comm = mesh.mpi_comm()
         x_max = self.geometry.mesh.coordinates().max(0)[0]
         self._shift = dolfin.Constant((x_max, 0, 0))
 
@@ -183,7 +218,8 @@ class DataLoader:
             "r",
         )
 
-        self._h5file_py = h5py.File(self.path, "r")
+        if dolfin.MPI.rank(self.comm) == 0:
+            self._h5file_py = h5py.File(self.path, "r")
 
         if self.geometry.markers is None:
             raise RuntimeError("Cannot load markers")
@@ -199,10 +235,22 @@ class DataLoader:
         self.a = dolfin.Function(V, name="acceleration")
 
         self.stress_space = dolfin.FunctionSpace(self.geometry.mesh, "CG", 1)
+        self._finalizer_h5file = weakref.finalize(self, close_h5file, self._h5file)
+        self._finalizer_h5pyfile = weakref.finalize(
+            self,
+            close_h5pyfile,
+            self._h5file_py,
+        )
 
-    def __del__(self):
-        self._h5file.close()
-        self._h5file_py.close()
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.cleanup()
+
+    def cleanup(self):
+        self._finalizer_h5file()
+        self._finalizer_h5pyfile()
 
     @property
     def problem(self):
@@ -232,7 +280,6 @@ class DataLoader:
             raise KeyError(f"Invalid time stamp {t}")
 
     def get_u(self, t):
-
         self._check_t(t)
         self._h5file.read(self.u, f"u/{t}/")
         return self.u
@@ -240,12 +287,16 @@ class DataLoader:
     def get_u_p_tau(self, t):
         self._check_t(t)
         self._h5file.read(self.u, f"u/{t}/")
-        p = self._h5file_py["p"][t][...].tolist()
-        tau = self._h5file_py["tau"][t][...].tolist()
+        p = []
+        tau = []
+        if dolfin.MPI.rank(self.comm) == 0:
+            p = self._h5file_py["p"][t][...].tolist()
+            tau = self._h5file_py["tau"][t][...].tolist()
+        p = self.comm.bcast(p, root=0)
+        tau = self.comm.bcast(tau, root=0)
         return (self.u, p, tau)
 
     def get(self, t):
-
         self._check_t(t)
 
         self._h5file.read(self.u, f"u/{t}/")
@@ -380,7 +431,6 @@ class DataLoader:
         )
 
     def postprocess_all(self, folder: Optional[Union[str, Path]] = None):
-
         if folder is None:
             folder = self._path.with_suffix("")
         outfolder = Path(folder)
@@ -691,7 +741,6 @@ def plot_volume_comparison(
 
 
 def plot_activation_pressure_function(t, act, pressure, outdir):
-
     fig, ax = plt.subplots()
     ax.plot(t, act)
     ax.set_title("Activation fuction \u03C4(t)")

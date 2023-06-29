@@ -5,7 +5,7 @@ except ImportError:
     # use the shim package importlib-metadata pre-3.8
     import importlib_metadata as importlib_metadata  # type: ignore
 
-from . import benchmark
+from . import benchmark1
 from . import cli
 from . import geometry
 from . import material
@@ -25,7 +25,7 @@ __program_name__ = meta["Name"]
 
 
 __all__ = [
-    "benchmark",
+    "benchmark1",
     "cli",
     "geometry",
     "material",

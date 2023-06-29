@@ -44,7 +44,7 @@ pre-commit install
 
 You can run the command line interface directly, e.g
 ```
-cardiac-benchmark step1
+cardiac-benchmark benchmark1-step1
 ```
 To see all steps that you can run, do
 ```
@@ -52,15 +52,16 @@ cardiac-benchmark --help
 ```
 and to see the specific options for a given step you can do (for e.g `step1`)
 ```
-cardiac-bencmark step1 --help
+cardiac-bencmark benchmark1-step1 --help
 ```
 
 You can also use the python API
 ```python
 import cardiac_benchmark
 
-cardiac_benchmark.benchmark.run()
+cardiac_benchmark.benchmark1.run()
 ```
+which by default will run benchmark 1 - step 1.
 
 ## License
 
