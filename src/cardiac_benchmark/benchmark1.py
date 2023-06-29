@@ -190,13 +190,15 @@ def run(
     elif Pressure[pressure] == Pressure.zero_active:
         pm.act[:] = 0.0
 
-    pm.save(outdir / "pressure_model.npy")
-    postprocess.plot_activation_pressure_function(
-        t=time,
-        act=pm.act,
-        pressure=pm.pressure,
-        outdir=outdir,
-    )
+    if dolfin.MPI.rank(dolfin.MPI.comm_world) == 0:
+        pm.save(outdir / "pressure_model.npy")
+
+        postprocess.plot_activation_pressure_function(
+            t=time,
+            act=pm.act,
+            pressure=pm.pressure,
+            outdir=outdir,
+        )
 
     p = dolfin.Constant(0.0)
     problem_parameters["p"] = p
@@ -212,20 +214,21 @@ def run(
         tau=tau,
         parameters=material_parameters,
     )
-
     problem = Problem(
         geometry=geo,
         material=material,
         function_space=function_space,
         parameters=problem_parameters,
     )
+
     problem.solve()
 
     result_filepath = Path(outpath)
     if result_filepath.suffix != ".h5":
-        msg = "Expected output path to be to type HDF5 with suffix .h5, got {result_filepath.suffix}"
+        msg = f"Expected output path to be to type HDF5 with suffix .h5, got {result_filepath.suffix}"
         raise OSError(msg)
     result_filepath.parent.mkdir(exist_ok=True)
+
     collector = postprocess.DataCollector(
         result_filepath,
         problem=problem,

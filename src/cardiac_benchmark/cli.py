@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Optional
 from typing import Union
 
+import dolfin
 import typer
 
 from . import benchmark1
@@ -100,8 +101,9 @@ def benchmark1_step_0_1(
     typer.echo(
         f"Running step {step}, case {case} with parameters {pprint.pformat(parameters)}",
     )
-    typer.echo(f"Output will be saved to {outdir}")
-    (outdir / "parameters.json").write_text(json.dumps(parameters))
+    if dolfin.MPI.rank(dolfin.MPI.comm_world) == 0:
+        typer.echo(f"Output will be saved to {outdir}")
+        (outdir / "parameters.json").write_text(json.dumps(parameters))
 
     if run_benchmark:
         benchmark1.run(**params)  # type: ignore
@@ -127,6 +129,8 @@ def benchmark1_step0_case_A(
     geometry_path: Optional[Path] = typer.Option(None),
     function_space: str = "P_2",
 ) -> int:
+    if outdir is None:
+        outdir = Path("results_benchmark1_step0_caseA")
     return benchmark1_step_0_1(
         step=0,
         case="A",
@@ -153,6 +157,8 @@ def benchmark1_step0_case_B(
     geometry_path: Optional[Path] = typer.Option(None),
     function_space: str = "P_2",
 ) -> int:
+    if outdir is None:
+        outdir = Path("results_benchmark1_step0_caseB")
     return benchmark1_step_0_1(
         step=0,
         case="B",
@@ -179,6 +185,8 @@ def benchmark1_step1(
     geometry_path: Optional[Path] = typer.Option(None),
     function_space: str = "P_2",
 ) -> int:
+    if outdir is None:
+        outdir = Path("results_benchmark1_step1")
     return benchmark1_step_0_1(
         step=1,
         outdir=outdir,
@@ -204,6 +212,8 @@ def benchmark1_step2(
     geometry_path: Optional[Path] = typer.Option(None),
     function_space: str = "P_2",
 ) -> int:
+    if outdir is None:
+        outdir = Path(f"results_benchmark1_step2/case{case}")
     return benchmark1_step_0_1(
         step=2,
         case=case,

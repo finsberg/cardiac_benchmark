@@ -48,7 +48,6 @@ def read_meshfunction(fname, obj):
 
 
 def gmsh2dolfin(msh_file):
-
     msh = meshio.gmsh.read(msh_file)
 
     vertex_mesh = create_mesh(msh, "vertex")
@@ -281,13 +280,17 @@ def load_geometry(fname) -> "EllipsoidGeometry":
 
     mesh = dolfin.Mesh()
 
+    element = None  # type: ignore
+    markers: Dict[str, Tuple[int, int]] = {}
     if mesh.mpi_comm().rank == 0:
         with h5py.File(fname, "r") as h5file:
             element = eval(h5file["f0"].attrs["signature"])
-            markers: Dict[str, Tuple[int, int]] = {}
             for k, v in h5file["mesh"].attrs.items():
                 v_split = v.decode().split("_")
                 markers[k] = (int(v_split[0]), int(v_split[1]))
+
+    element = mesh.mpi_comm().bcast(element, root=0)
+    markers = mesh.mpi_comm().bcast(markers, root=0)
 
     with dolfin.HDF5File(mesh.mpi_comm(), fname.as_posix(), "r") as h5file:
         h5file.read(mesh, "mesh", False)
