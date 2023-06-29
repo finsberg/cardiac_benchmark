@@ -22,7 +22,8 @@ dolfin.parameters["form_compiler"]["optimize"] = True
 
 class Pressure(str, Enum):
     bestel = "bestel"
-    none = "none"
+    zero_pressure = "zero_pressure"
+    zero_active = "zero_active"
 
 
 def solve(
@@ -35,7 +36,6 @@ def solve(
     collector: postprocess.DataCollector,
     store_freq: int = 1,
 ) -> None:
-
     for i, (t, a, p_) in enumerate(zip(time, act, pressure)):
         dolfin.info(f"{i}: Solving for time {t:.3f} with tau = {a} and pressure = {p_}")
 
@@ -183,9 +183,12 @@ def run(
         t_eval=t_eval,
         parameters=pressure_parameters,
     )
-    if Pressure[pressure] == Pressure.none:
+    if Pressure[pressure] == Pressure.zero_pressure:
         # We set the pressure to zero
         pm.pressure[:] = 0.0
+
+    elif Pressure[pressure] == Pressure.zero_active:
+        pm.act[:] = 0.0
 
     pm.save(outdir / "pressure_model.npy")
     postprocess.plot_activation_pressure_function(

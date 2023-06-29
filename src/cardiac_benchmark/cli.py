@@ -4,10 +4,11 @@ import json
 import pprint
 from pathlib import Path
 from typing import Optional
+from typing import Union
 
 import typer
 
-from . import benchmark
+from . import benchmark1
 from . import step2 as _step2
 from .geometry import EllipsoidGeometry
 from .postprocess import DataLoader
@@ -54,17 +55,18 @@ def main(
     return
 
 
-@app.command(help="Run step 1")
-def step1(
+def benchmark1_step_0_1(
+    step: int,
+    case: Union[str, int] = 0,
     outdir: Optional[Path] = typer.Option(None),
     run_benchmark: bool = True,
     run_postprocess: bool = True,
     run_comparison: bool = True,
     alpha_m: float = 0.2,
     alpha_f: float = 0.4,
-    pressure: benchmark.Pressure = benchmark.Pressure.bestel,
+    pressure: benchmark1.Pressure = benchmark1.Pressure.bestel,
     geometry_path: Optional[Path] = typer.Option(None),
-    function_space: str = "P_1",
+    function_space: str = "P_2",
 ) -> int:
     if outdir is not None:
         outdir = Path(outdir).absolute()
@@ -77,7 +79,11 @@ def step1(
     outdir.mkdir(exist_ok=True, parents=True)
     outpath = outdir / "result.h5"
 
-    params = benchmark.default_parameters()
+    params = benchmark1.default_parameters()
+    if case == 2:
+        assert isinstance(case, int), "Case must be an integer for step 2"
+        assert 1 <= case <= 16, "Case must be a number between 1 and 16"
+        params.update(_step2.cases[case - 1])
     params["alpha_m"] = alpha_m
     params["alpha_f"] = alpha_f
     params["pressure"] = pressure
@@ -86,16 +92,19 @@ def step1(
     params["function_space"] = function_space
 
     parameters = params.copy()
-    parameters["step"] = 1
+    parameters["step"] = step
+    parameters["case"] = case
     parameters["outdir"] = outdir.as_posix()
     parameters["timestamp"] = datetime.datetime.now().isoformat()
 
-    typer.echo(f"Running step 1 with parameters {pprint.pformat(parameters)}")
+    typer.echo(
+        f"Running step {step}, case {case} with parameters {pprint.pformat(parameters)}",
+    )
     typer.echo(f"Output will be saved to {outdir}")
     (outdir / "parameters.json").write_text(json.dumps(parameters))
 
     if run_benchmark:
-        benchmark.run(**params)  # type: ignore
+        benchmark1.run(**params)  # type: ignore
 
     loader = DataLoader(outpath)
     if run_postprocess:
@@ -107,61 +116,107 @@ def step1(
     return 0
 
 
-@app.command(help="Run step 2")
-def step2(
+@app.command(help="Run benchmark 1 - step 0 - case A")
+def benchmark1_step0_case_A(
+    outdir: Optional[Path] = typer.Option(None),
+    run_benchmark: bool = True,
+    run_postprocess: bool = True,
+    run_comparison: bool = True,
+    alpha_m: float = 0.2,
+    alpha_f: float = 0.4,
+    geometry_path: Optional[Path] = typer.Option(None),
+    function_space: str = "P_2",
+) -> int:
+    return benchmark1_step_0_1(
+        step=0,
+        case="A",
+        outdir=outdir,
+        run_benchmark=run_benchmark,
+        run_postprocess=run_postprocess,
+        run_comparison=run_comparison,
+        alpha_m=alpha_m,
+        alpha_f=alpha_f,
+        pressure=benchmark1.Pressure.zero_pressure,
+        geometry_path=geometry_path,
+        function_space=function_space,
+    )
+
+
+@app.command(help="Run benchmark 1 - step 0 - case B")
+def benchmark1_step0_case_B(
+    outdir: Optional[Path] = typer.Option(None),
+    run_benchmark: bool = True,
+    run_postprocess: bool = True,
+    run_comparison: bool = True,
+    alpha_m: float = 0.2,
+    alpha_f: float = 0.4,
+    geometry_path: Optional[Path] = typer.Option(None),
+    function_space: str = "P_2",
+) -> int:
+    return benchmark1_step_0_1(
+        step=0,
+        case="B",
+        outdir=outdir,
+        run_benchmark=run_benchmark,
+        run_postprocess=run_postprocess,
+        run_comparison=run_comparison,
+        alpha_m=alpha_m,
+        alpha_f=alpha_f,
+        pressure=benchmark1.Pressure.zero_active,
+        geometry_path=geometry_path,
+        function_space=function_space,
+    )
+
+
+@app.command(help="Run benchmark 1 - step 1")
+def benchmark1_step1(
+    outdir: Optional[Path] = typer.Option(None),
+    run_benchmark: bool = True,
+    run_postprocess: bool = True,
+    run_comparison: bool = True,
+    alpha_m: float = 0.2,
+    alpha_f: float = 0.4,
+    geometry_path: Optional[Path] = typer.Option(None),
+    function_space: str = "P_2",
+) -> int:
+    return benchmark1_step_0_1(
+        step=1,
+        outdir=outdir,
+        run_benchmark=run_benchmark,
+        run_postprocess=run_postprocess,
+        run_comparison=run_comparison,
+        alpha_m=alpha_m,
+        alpha_f=alpha_f,
+        pressure=benchmark1.Pressure.bestel,
+        geometry_path=geometry_path,
+        function_space=function_space,
+    )
+
+
+@app.command(help="Run benchmark 1 - step 2")
+def benchmark1_step2(
     case: int,
     outdir: Optional[Path] = typer.Option(None),
     run_benchmark: bool = True,
     run_postprocess: bool = True,
     alpha_m: float = 0.2,
     alpha_f: float = 0.4,
-    pressure: benchmark.Pressure = benchmark.Pressure.bestel,
     geometry_path: Optional[Path] = typer.Option(None),
-    function_space: str = "P_1",
+    function_space: str = "P_2",
 ) -> int:
-    if outdir is not None:
-        outdir = Path(outdir).absolute()
-    else:
-        outdir = Path.cwd() / "results"
-
-    if geometry_path is None:
-        geometry_path = Path.cwd() / "geometry.h5"
-
-    outdir.mkdir(exist_ok=True, parents=True)
-    outpath = outdir / "result.h5"
-
-    params = benchmark.default_parameters()
-    assert 1 <= case <= 16, "Case must be a number between 1 and 16"
-    params.update(_step2.cases[case - 1])
-    params["outpath"] = outpath.as_posix()
-    params["geometry_path"] = geometry_path.as_posix()
-    params["t_sys"] = 0.005
-    params["t_dias"] = 0.319
-    params["alpha_m"] = alpha_m
-    params["alpha_f"] = alpha_f
-    params["pressure"] = pressure
-    params["function_space"] = function_space
-
-    parameters = params.copy()
-    parameters["step"] = 2
-    parameters["case"] = case
-    parameters["outdir"] = outdir.as_posix()
-    parameters["timestamp"] = datetime.datetime.now().isoformat()
-
-    typer.echo(
-        f"Running step 2, case {case} with parameters:\n {pprint.pformat(params)}",
+    return benchmark1_step_0_1(
+        step=2,
+        case=case,
+        outdir=outdir,
+        run_benchmark=run_benchmark,
+        run_postprocess=run_postprocess,
+        run_comparison=False,
+        alpha_m=alpha_m,
+        alpha_f=alpha_f,
+        pressure=benchmark1.Pressure.bestel,
+        geometry_path=geometry_path,
+        function_space=function_space,
     )
-    typer.echo(f"Output will be saved to {outdir}")
-    (outdir / "parameters.json").write_text(json.dumps(parameters))
-
-    if run_benchmark:
-        benchmark.run(**params)  # type: ignore
-
-    if run_postprocess:
-        loader = DataLoader(outpath)
-        loader.postprocess_all(folder=outdir)
-
-    return 0
 
 
 @app.command(help="Create geometry")
