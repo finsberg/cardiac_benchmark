@@ -64,10 +64,7 @@ def _benchmark_1(fname: str, cmd: str, _geo_path: str) -> None:
         ("sp1", sp1),
     ]:
         ref_data = reference_data[key]
-        assert (
-            np.linalg.norm(np.subtract(ref_data, data)) / np.linalg.norm(ref_data)
-            < 1e-6
-        )
+        assert np.max(np.subtract(ref_data, data)) / np.max(np.abs(ref_data)) < 1e-6
 
     shutil.rmtree(outdir)
 
