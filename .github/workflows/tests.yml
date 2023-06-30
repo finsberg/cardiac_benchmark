@@ -1,0 +1,21 @@
+name: CI
+
+on: [push]
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/scientificcomputing/fenics-gmsh:jupterlab-2023-04-21
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Install dependencies
+        run: |
+          python3 -m pip install -e ".[test]"
+
+      - name: Test with pytest
+        run: |
+          python3 -m pytest
