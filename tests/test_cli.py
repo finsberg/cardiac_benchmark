@@ -64,7 +64,7 @@ def _benchmark_1(fname: str, cmd: str, _geo_path: str) -> None:
         ("sp1", sp1),
     ]:
         ref_data = reference_data[key]
-        assert np.allclose(ref_data, data), key
+        assert np.allclose(ref_data, data, rtol=1e-6), key
 
     shutil.rmtree(outdir)
 
