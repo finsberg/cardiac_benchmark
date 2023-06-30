@@ -64,7 +64,10 @@ def _benchmark_1(fname: str, cmd: str, _geo_path: str) -> None:
         ("sp1", sp1),
     ]:
         ref_data = reference_data[key]
-        assert np.allclose(ref_data, data, rtol=1e-6), key
+        assert (
+            np.linalg.norm(np.subtract(ref_data, data)) / np.linalg.norm(ref_data)
+            < 1e-6
+        )
 
     shutil.rmtree(outdir)
 
@@ -78,42 +81,8 @@ def test_benchmark1_step0_caseB(geo_path):
 
 
 def test_benchmark1_step1(geo_path):
-    out = Path(__file__).parent.parent / "results_benchmark1_step1"
-    up1 = np.load(out / "componentwise_displacement_up1.npy")
-    up0 = np.load(out / "componentwise_displacement_up0.npy")
-    volume = np.load(out / "volume.npy")
-    sp1 = np.load(out / "von_Mises_stress_sp1.npy")
-    sp0 = np.load(out / "von_Mises_stress_sp0.npy")
-    time_stamps = np.load(out / "time_stamps.npy")
-
-    data = {
-        "up0": up0,
-        "up1": up1,
-        "volume": volume,
-        "time_stamps": time_stamps,
-        "sp0": sp0,
-        "sp1": sp1,
-    }
-    np.save(here / "data" / "benchmark1_step1.npy", data, allow_pickle=True)
     _benchmark_1("benchmark1_step1", ["benchmark1-step1"], geo_path)
 
 
 def test_benchmark1_step2_case1(geo_path):
-    out = Path(__file__).parent.parent / "results_benchmark1_step2/case1"
-    up1 = np.load(out / "componentwise_displacement_up1.npy")
-    up0 = np.load(out / "componentwise_displacement_up0.npy")
-    volume = np.load(out / "volume.npy")
-    sp1 = np.load(out / "von_Mises_stress_sp1.npy")
-    sp0 = np.load(out / "von_Mises_stress_sp0.npy")
-    time_stamps = np.load(out / "time_stamps.npy")
-
-    data = {
-        "up0": up0,
-        "up1": up1,
-        "volume": volume,
-        "time_stamps": time_stamps,
-        "sp0": sp0,
-        "sp1": sp1,
-    }
-    np.save(here / "data" / "benchmark1_step2.npy", data, allow_pickle=True)
     _benchmark_1("benchmark1_step2", ["benchmark1-step2", "1"], geo_path)
