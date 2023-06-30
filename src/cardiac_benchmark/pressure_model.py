@@ -1,5 +1,6 @@
 import math
 import pprint
+from enum import Enum
 from pathlib import Path
 from typing import Dict
 from typing import NamedTuple
@@ -9,6 +10,12 @@ from typing import Union
 
 import numpy as np
 import scipy.integrate
+
+
+class Pressure(str, Enum):
+    bestel = "bestel"
+    zero_pressure = "zero_pressure"
+    zero_active = "zero_active"
 
 
 class PressureActivationSolution(NamedTuple):
@@ -55,7 +62,6 @@ def activation_pressure_function(
     t_eval: Optional[np.ndarray] = None,
     parameters: Optional[Dict[str, float]] = None,
 ) -> PressureActivationSolution:
-
     params = default_parameters()
     if parameters is not None:
         params.update(parameters)

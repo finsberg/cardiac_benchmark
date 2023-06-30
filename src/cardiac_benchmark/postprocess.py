@@ -436,6 +436,8 @@ class DataLoader:
         outfolder = Path(folder)
         outfolder.mkdir(parents=True, exist_ok=True)
 
+        np.save(outfolder / "time_stamps.npy", self.time_stamps)
+
         comm = self.geometry.mesh.mpi_comm()
 
         u_path = outfolder / "displacement.xdmf"
