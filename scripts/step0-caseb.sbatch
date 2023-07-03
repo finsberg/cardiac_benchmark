@@ -29,11 +29,11 @@ module use /cm/shared/ex3-modules/0.6.1/modulefiles
 module load python-fenics-dolfin-2019.1.0.post0
 
 LIBRARY_ROOT=/home/henriknf/local/src/cardiac_benchmark
-
-SCRATCH_DIRECTORY=/global/D1/homes/${USER}/cardiac_benchmark/benchmark1/step2/case${1}/${SLURM_JOBID}
+SCRATCH_DIRECTORY=/global/D1/homes/${USER}/cardiac_benchmark/benchmark1/step0-caseB/${SLURM_JOBID}
 mkdir -p ${SCRATCH_DIRECTORY}
 echo "Scratch directory: ${SCRATCH_DIRECTORY}"
 
-echo "Run command: ${LIBRARY_ROOT}/venv/bin/cardiac-benchmark benchmark1-step1 --outdir "${SCRATCH_DIRECTORY}" --geometry-path "${LIBRARY_ROOT}/geometry.h5""
-srun ${LIBRARY_ROOT}/venv/bin/cardiac-benchmark benchmark1-step1 ${1} --outdir "${SCRATCH_DIRECTORY}" --geometry-path "/home/henriknf/local/src/cardiac_benchmark/geometry.h5"
+echo "Run command: ${LIBRARY_ROOT}/venv/bin/cardiac-benchmark benchmark1-step0-case-b --outdir "${SCRATCH_DIRECTORY}" --geometry-path "${LIBRARY_ROOT}/geometry.h5""
+# Assuming that you installed the software in a virutal environment in ${LIBRARY_ROOT}/venv
+srun ${LIBRARY_ROOT}/venv/bin/cardiac-benchmark benchmark1-step0-case-b --outdir "${SCRATCH_DIRECTORY}" --geometry-path "${LIBRARY_ROOT}/geometry.h5"
 cp slurm-output/${SLURM_JOBID}-cardiac-benchmark-std* ${SCRATCH_DIRECTORY}
