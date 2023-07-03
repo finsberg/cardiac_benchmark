@@ -53,7 +53,7 @@ where = ["src"]
 
 [tool.pytest.ini_options]
 addopts = [
-   "--cov=drug_database",
+   "--cov=cardiac_benchmark",
    "--cov-report=html",
    "--cov-report=term-missing",
    "-v"

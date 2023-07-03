@@ -1,4 +1,3 @@
-from enum import Enum
 from pathlib import Path
 from typing import Dict
 from typing import Union
@@ -18,12 +17,6 @@ dolfin.parameters["form_compiler"]["quadrature_degree"] = 4
 dolfin.parameters["form_compiler"]["cpp_optimize"] = True
 dolfin.parameters["form_compiler"]["representation"] = "uflacs"
 dolfin.parameters["form_compiler"]["optimize"] = True
-
-
-class Pressure(str, Enum):
-    bestel = "bestel"
-    zero_pressure = "zero_pressure"
-    zero_active = "zero_active"
 
 
 def solve(
@@ -131,7 +124,7 @@ def run(
     alpha_f: float = 0.4,
     alpha_endo_fiber: float = -60.0,
     alpha_epi_fiber: float = 60.0,
-    pressure: Pressure = Pressure.bestel,
+    pressure: pressure_model.Pressure = pressure_model.Pressure.bestel,
     outpath: Union[str, Path] = "results.h5",
     geometry_path: Union[str, Path] = "geometry.h5",
     function_space: str = "P_1",
@@ -183,11 +176,11 @@ def run(
         t_eval=t_eval,
         parameters=pressure_parameters,
     )
-    if Pressure[pressure] == Pressure.zero_pressure:
+    if pressure_model.Pressure[pressure] == pressure_model.Pressure.zero_pressure:
         # We set the pressure to zero
         pm.pressure[:] = 0.0
 
-    elif Pressure[pressure] == Pressure.zero_active:
+    elif pressure_model.Pressure[pressure] == pressure_model.Pressure.zero_active:
         pm.act[:] = 0.0
 
     if dolfin.MPI.rank(dolfin.MPI.comm_world) == 0:

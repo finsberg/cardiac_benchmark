@@ -9,10 +9,10 @@ from typing import Union
 import dolfin
 import typer
 
-from . import benchmark1
 from . import step2 as _step2
 from .geometry import EllipsoidGeometry
 from .postprocess import DataLoader
+from .pressure_model import Pressure
 
 app = typer.Typer()
 
@@ -65,7 +65,7 @@ def benchmark1_step_0_1(
     run_comparison: bool = True,
     alpha_m: float = 0.2,
     alpha_f: float = 0.4,
-    pressure: benchmark1.Pressure = benchmark1.Pressure.bestel,
+    pressure: Pressure = Pressure.bestel,
     geometry_path: Optional[Path] = typer.Option(None),
     function_space: str = "P_2",
 ) -> int:
@@ -79,6 +79,8 @@ def benchmark1_step_0_1(
 
     outdir.mkdir(exist_ok=True, parents=True)
     outpath = outdir / "result.h5"
+
+    from . import benchmark1
 
     params = benchmark1.default_parameters()
     if case == 2:
@@ -140,7 +142,7 @@ def benchmark1_step0_case_A(
         run_comparison=run_comparison,
         alpha_m=alpha_m,
         alpha_f=alpha_f,
-        pressure=benchmark1.Pressure.zero_pressure,
+        pressure=Pressure.zero_pressure,
         geometry_path=geometry_path,
         function_space=function_space,
     )
@@ -168,7 +170,7 @@ def benchmark1_step0_case_B(
         run_comparison=run_comparison,
         alpha_m=alpha_m,
         alpha_f=alpha_f,
-        pressure=benchmark1.Pressure.zero_active,
+        pressure=Pressure.zero_active,
         geometry_path=geometry_path,
         function_space=function_space,
     )
@@ -195,7 +197,7 @@ def benchmark1_step1(
         run_comparison=run_comparison,
         alpha_m=alpha_m,
         alpha_f=alpha_f,
-        pressure=benchmark1.Pressure.bestel,
+        pressure=Pressure.bestel,
         geometry_path=geometry_path,
         function_space=function_space,
     )
@@ -223,7 +225,7 @@ def benchmark1_step2(
         run_comparison=False,
         alpha_m=alpha_m,
         alpha_f=alpha_f,
-        pressure=benchmark1.Pressure.bestel,
+        pressure=Pressure.bestel,
         geometry_path=geometry_path,
         function_space=function_space,
     )
@@ -235,6 +237,7 @@ def create_geometry(
     alpha_endo: float = -60.0,
     alpha_epi: float = 60.0,
     function_space: str = "Quadrature_4",
+    mesh_size_factor: float = 1.0,
 ):
     geo = EllipsoidGeometry.from_parameters(
         fiber_params={
@@ -242,5 +245,9 @@ def create_geometry(
             "alpha_epi": alpha_epi,
             "function_space": function_space,
         },
+        mesh_params={
+            "mesh_size_factor": mesh_size_factor,
+        },
     )
+    dolfin.File("mesh.pvd") << geo.mesh
     geo.save(path)
