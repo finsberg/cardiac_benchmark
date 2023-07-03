@@ -1,3 +1,4 @@
+import json
 import weakref
 from pathlib import Path
 from typing import Dict
@@ -29,6 +30,14 @@ class SavedProblem(NamedTuple):
     signature: ufl.finiteelement.FiniteElementBase
 
 
+class ConstantEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, dolfin.Constant):
+            return float(obj)
+        # Let the base class default method raise the TypeError
+        return json.JSONEncoder.default(self, obj)
+
+
 def close_h5file(h5file):
     if h5file is not None:
         h5file.close()
@@ -43,6 +52,7 @@ def save_problem(
     fname,
     problem: Problem,
     pressure_parameters: Dict[str, float],
+    activation_parameters: Dict[str, float],
 ):
     path = Path(fname)
     if path.is_file():
@@ -57,6 +67,8 @@ def save_problem(
         with h5py.File(fname, "a") as h5file:
             group = h5file.create_group("problem_parameters")
             for k, v in problem.parameters.items():
+                if isinstance(v, str):
+                    continue  # Skip the function space
                 group.create_dataset(k, data=float(v))
 
             group = h5file.create_group("material_parameters")
@@ -65,6 +77,10 @@ def save_problem(
 
             group = h5file.create_group("pressure_parameters")
             for k, v in pressure_parameters.items():
+                group.create_dataset(k, data=float(v))
+
+            group = h5file.create_group("activation_parameters")
+            for k, v in activation_parameters.items():
                 group.create_dataset(k, data=float(v))
 
             h5file.create_group("p")
@@ -112,7 +128,7 @@ def load_problem(fname) -> SavedProblem:
     time_stamps = dolfin.MPI.comm_world.bcast(time_stamps, root=0)
     time_stamps_str = dolfin.MPI.comm_world.bcast(time_stamps_str, root=0)
     problem_parameters = dolfin.MPI.comm_world.bcast(problem_parameters, root=0)
-
+    problem_parameters["function_space"] = f"{signature.family()}_{signature.degree()}"
     geometry = load_geometry(path)
 
     tau = dolfin.Constant(0.0)
@@ -126,7 +142,6 @@ def load_problem(fname) -> SavedProblem:
     problem = Problem(
         geometry=geometry,
         material=material,
-        function_space=f"{signature.family()}_{signature.degree()}",
         parameters=problem_parameters,
     )
 
@@ -144,6 +159,7 @@ class DataCollector:
         path,
         problem: Problem,
         pressure_parameters: Dict[str, float],
+        actvation_parameters: Dict[str, float],
     ) -> None:
         self._path = Path(path)
         self._comm = dolfin.MPI.comm_world
@@ -165,7 +181,7 @@ class DataCollector:
         if problem.geometry.mesh is not None:
             self._comm = problem.geometry.mesh.mpi_comm()
 
-        save_problem(path, problem, pressure_parameters)
+        save_problem(path, problem, pressure_parameters, actvation_parameters)
 
     @property
     def path(self) -> str:
@@ -742,9 +758,9 @@ def plot_volume_comparison(
     fig.savefig(fname, dpi=300)
 
 
-def plot_activation_pressure_function(t, act, pressure, outdir):
+def plot_activation_pressure_function(t, activation, pressure, outdir):
     fig, ax = plt.subplots()
-    ax.plot(t, act)
+    ax.plot(t, activation)
     ax.set_title("Activation fuction \u03C4(t)")
     ax.set_ylabel("Pressure [Pa]")
     ax.set_xlabel("Time [s]")

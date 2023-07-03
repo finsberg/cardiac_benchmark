@@ -1,10 +1,14 @@
+import logging
 from pathlib import Path
+from typing import Any
 from typing import Dict
+from typing import Optional
 from typing import Union
 
 import dolfin
 import numpy as np
 
+from . import activation_model
 from . import postprocess
 from . import pressure_model
 from .geometry import EllipsoidGeometry
@@ -12,6 +16,7 @@ from .material import HolzapfelOgden
 from .problem import Problem
 
 HERE = Path(__file__).absolute().parent
+logger = logging.getLogger(__name__)
 
 dolfin.parameters["form_compiler"]["quadrature_degree"] = 4
 dolfin.parameters["form_compiler"]["cpp_optimize"] = True
@@ -22,14 +27,14 @@ dolfin.parameters["form_compiler"]["optimize"] = True
 def solve(
     problem,
     tau: dolfin.Constant,
-    act: np.ndarray,
+    activation: np.ndarray,
     pressure: np.ndarray,
     p: dolfin.Constant,
     time: np.ndarray,
     collector: postprocess.DataCollector,
     store_freq: int = 1,
 ) -> None:
-    for i, (t, a, p_) in enumerate(zip(time, act, pressure)):
+    for i, (t, a, p_) in enumerate(zip(time, activation, pressure)):
         dolfin.info(f"{i}: Solving for time {t:.3f} with tau = {a} and pressure = {p_}")
 
         tau.assign(a)
@@ -45,151 +50,135 @@ def solve(
 
 def get_geometry(
     path: Path,
-    alpha_endo: float = -60.0,
-    alpha_epi: float = 60.0,
+    mesh_parameters: Optional[Dict[str, float]] = None,
+    fiber_parameters: Optional[Dict[str, Union[float, str]]] = None,
 ) -> EllipsoidGeometry:
     if not path.is_file():
+        mesh_parameters = _update_parameters(
+            EllipsoidGeometry.default_mesh_parameters(),
+            mesh_parameters,
+        )
+        fiber_parameters = _update_parameters(
+            EllipsoidGeometry.default_fiber_parameters(),
+            fiber_parameters,
+        )
         geo = EllipsoidGeometry.from_parameters(
-            fiber_params={"alpha_endo": alpha_endo, "alpha_epi": alpha_epi},
+            fiber_params=fiber_parameters,
+            mesh_params=mesh_parameters,
         )
         geo.save(path)
     return EllipsoidGeometry.from_file(path)
 
 
-def default_parameters() -> Dict[str, Union[float, str]]:
+def default_parameters():
     return dict(
-        rho=1e3,
-        kappa=1e6,
-        alpha_top=1e5,
-        alpha_epi=1e8,
-        beta_top=5e3,
-        beta_epi=5e3,
-        t_sys=0.17,
-        t_dias=0.484,
-        gamma=0.005,
-        a_max=5.0,
-        a_min=-30.0,
-        sigma_0=1e5,
-        a=59.0,
-        a_f=18472.0,
-        a_fn=216.0,
-        a_n=2481.0,
-        b=8.023,
-        b_f=16.026,
-        b_fn=11.436,
-        b_n=11.12,
-        eta=1e2,
-        k=100.0,
-        dt=0.001,
-        alpha_m=0.2,
-        alpha_f=0.4,
-        alpha_endo_fiber=-60.0,
-        alpha_epi_fiber=60.0,
-        pressure="bestel",
+        problem_parameters=Problem.default_parameters(),
+        activation_parameters=activation_model.default_parameters(),
+        pressure_parameters=pressure_model.default_parameters(),
+        material_parameters=HolzapfelOgden.default_parameters(),
+        mesh_parameters=EllipsoidGeometry.default_mesh_parameters(),
+        fiber_parameters=EllipsoidGeometry.default_fiber_parameters(),
         outpath="results.h5",
         geometry_path="geometry.h5",
-        function_space="P_1",
     )
 
 
+def _update_parameters(
+    _par: Dict[str, Any],
+    par: Optional[Dict[str, Any]],
+) -> Dict[str, Any]:
+    if par is None:
+        par = {}
+    for key, value in par.items():
+        if key not in _par:
+            logger.warning(f"Invalid key {key}")
+            continue
+
+        if isinstance(_par[key], dolfin.Constant):
+            _par[key].assign(value)
+        else:
+            _par[key] = value
+    return _par
+
+
 def run(
-    rho: float = 1e3,
-    kappa: float = 1e6,
-    alpha_top: float = 1e5,
-    alpha_epi: float = 1e8,
-    beta_top: float = 5e3,
-    beta_epi: float = 5e3,
-    t_sys: float = 0.17,
-    t_dias: float = 0.484,
-    gamma: float = 0.005,
-    a_max: float = 5.0,
-    a_min: float = -30.0,
-    sigma_0: float = 1e5,
-    alpha_pre: float = 20.0,
-    alpha_mid: float = 5.0,
-    sigma_pre: float = 9332.4,
-    sigma_mid: float = 15998.0,
-    a: float = 59.0,
-    a_f: float = 18472.0,
-    a_fn: float = 216.0,
-    a_n: float = 2481.0,
-    b: float = 8.023,
-    b_f: float = 16.026,
-    b_fn: float = 11.436,
-    b_n: float = 11.12,
-    eta: float = 1e2,
-    k: float = 100.0,
-    dt: float = 0.001,
-    alpha_m: float = 0.2,
-    alpha_f: float = 0.4,
-    alpha_endo_fiber: float = -60.0,
-    alpha_epi_fiber: float = 60.0,
-    pressure: pressure_model.Pressure = pressure_model.Pressure.bestel,
+    problem_parameters: Optional[Dict[str, Union[float, dolfin.Constant]]] = None,
+    activation_parameters: Optional[Dict[str, float]] = None,
+    pressure_parameters: Optional[Dict[str, float]] = None,
+    material_parameters: Optional[Dict[str, Union[float, dolfin.Constant]]] = None,
+    mesh_parameters: Optional[Dict[str, float]] = None,
+    fiber_parameters: Optional[Dict[str, Union[float, str]]] = None,
+    zero_pressure: bool = False,
+    zero_activation: bool = False,
     outpath: Union[str, Path] = "results.h5",
     geometry_path: Union[str, Path] = "geometry.h5",
-    function_space: str = "P_1",
 ) -> None:
     outdir = Path(outpath).parent
     outdir.mkdir(parents=True, exist_ok=True)
 
-    problem_parameters = Problem.default_parameters()
-    problem_parameters["alpha_top"].assign(alpha_top)
-    problem_parameters["alpha_epi"].assign(alpha_epi)
-    problem_parameters["beta_top"].assign(beta_top)
-    problem_parameters["beta_epi"].assign(beta_epi)
-    problem_parameters["rho"].assign(rho)
-    problem_parameters["dt"].assign(dt)
-    problem_parameters["alpha_m"].assign(alpha_m)
-    problem_parameters["alpha_f"].assign(alpha_f)
+    problem_parameters = _update_parameters(
+        Problem.default_parameters(),
+        problem_parameters,
+    )
+    pressure_parameters = _update_parameters(
+        pressure_model.default_parameters(),
+        pressure_parameters,
+    )
+    activation_parameters = _update_parameters(
+        activation_model.default_parameters(),
+        activation_parameters,
+    )
+    material_parameters = _update_parameters(
+        HolzapfelOgden.default_parameters(),
+        material_parameters,
+    )
+    mesh_parameters = _update_parameters(
+        EllipsoidGeometry.default_mesh_parameters(),
+        mesh_parameters,
+    )
+    fiber_parameters = _update_parameters(
+        EllipsoidGeometry.default_fiber_parameters(),
+        fiber_parameters,
+    )
 
-    pressure_parameters = pressure_model.default_parameters()
-    pressure_parameters["sigma_0"] = sigma_0
-    pressure_parameters["t_sys"] = t_sys
-    pressure_parameters["t_dias"] = t_dias
-    pressure_parameters["gamma"] = gamma
-    pressure_parameters["a_max"] = a_max
-    pressure_parameters["a_min"] = a_min
-    pressure_parameters["alpha_pre"] = alpha_pre
-    pressure_parameters["alpha_mid"] = alpha_mid
-    pressure_parameters["sigma_pre"] = sigma_pre
-    pressure_parameters["sigma_mid"] = sigma_mid
-
-    material_parameters = HolzapfelOgden.default_parameters()
-    material_parameters["eta"].assign(eta)
-    material_parameters["a"].assign(a)
-    material_parameters["a_f"].assign(a_f)
-    material_parameters["a_fn"].assign(a_fn)
-    material_parameters["a_n"].assign(a_n)
-    material_parameters["b"].assign(b)
-    material_parameters["b_f"].assign(b_f)
-    material_parameters["b_fn"].assign(b_fn)
-    material_parameters["b_n"].assign(b_n)
-    material_parameters["k"].assign(k)
-    material_parameters["kappa"].assign(kappa)
-
+    dt = float(problem_parameters["dt"])
     tau = dolfin.Constant(0.0)
     time = np.arange(dt, 1, dt)
 
     t_eval = time - float(problem_parameters["alpha_f"]) * dt
-    pm = pressure_model.activation_pressure_function(
+    pressure = pressure_model.pressure_function(
         (0, 1),
         t_eval=t_eval,
         parameters=pressure_parameters,
     )
-    if pressure_model.Pressure[pressure] == pressure_model.Pressure.zero_pressure:
+    if zero_pressure:
         # We set the pressure to zero
-        pm.pressure[:] = 0.0
+        pressure[:] = 0.0
 
-    elif pressure_model.Pressure[pressure] == pressure_model.Pressure.zero_active:
-        pm.act[:] = 0.0
+    activation = activation_model.activation_function(
+        (0, 1),
+        t_eval=t_eval,
+        parameters=activation_parameters,
+    )
+    if zero_activation:
+        activation[:] = 0.0
 
     if dolfin.MPI.rank(dolfin.MPI.comm_world) == 0:
-        pm.save(outdir / "pressure_model.npy")
+        np.save(
+            outdir / "pressure_model.npy",
+            {
+                "time": time,
+                "activation": activation,
+                "pressure": pressure,
+                "pressure_parameters": pressure_parameters,
+                "activation_parameters": activation_parameters,
+            },
+        )
 
         postprocess.plot_activation_pressure_function(
             t=time,
-            act=pm.act,
-            pressure=pm.pressure,
+            activation=activation,
+            pressure=pressure,
             outdir=outdir,
         )
 
@@ -198,8 +187,8 @@ def run(
 
     geo = get_geometry(
         path=Path(geometry_path),
-        alpha_endo=alpha_endo_fiber,
-        alpha_epi=alpha_epi_fiber,
+        fiber_parameters=fiber_parameters,
+        mesh_parameters=mesh_parameters,
     )
     material = HolzapfelOgden(
         f0=geo.f0,
@@ -210,7 +199,6 @@ def run(
     problem = Problem(
         geometry=geo,
         material=material,
-        function_space=function_space,
         parameters=problem_parameters,
     )
 
@@ -225,14 +213,15 @@ def run(
     collector = postprocess.DataCollector(
         result_filepath,
         problem=problem,
-        pressure_parameters=pm.parameters,
+        pressure_parameters=pressure_parameters,
+        actvation_parameters=activation_parameters,
     )
 
     solve(
         problem=problem,
         tau=tau,
-        act=pm.act,
-        pressure=pm.pressure,
+        activation=activation,
+        pressure=pressure,
         p=p,
         time=time,
         collector=collector,

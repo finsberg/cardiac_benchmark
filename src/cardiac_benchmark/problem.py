@@ -50,8 +50,9 @@ class Problem:
         self,
         geometry: EllipsoidGeometry,
         material: HolzapfelOgden,
-        parameters: typing.Optional[typing.Dict[str, dolfin.Constant]] = None,
-        function_space: str = "P_1",
+        parameters: typing.Optional[
+            typing.Dict[str, typing.Union[dolfin.Constant, str]]
+        ] = None,
         solver_parameters=None,
     ) -> None:
         """Constructor
@@ -62,12 +63,9 @@ class Problem:
             The geometry
         material : HolzapfelOgden
             The material
-        parameters : typing.Dict[str, dolfin.Constant], optional
+        parameters : typing.Dict[str, Union[dolfin.Constant, str], optional
             Problem parameters, by default None. See
             `Problem.default_parameters`
-        function_space : str, optional
-            A string of the form `"{family}_{degree}` representing
-            the function space for the displacement, by default "P_1"
         """
         self.geometry = geometry
         self.material = material
@@ -75,7 +73,6 @@ class Problem:
         parameters = parameters or {}
         self.parameters = Problem.default_parameters()
         self.parameters.update(parameters)
-        self._function_space = function_space
 
         self.solver_parameters = NonlinearSolver.default_solver_parameters()
         if solver_parameters is not None:
@@ -87,7 +84,7 @@ class Problem:
         """Initialize function spaces"""
         mesh = self.geometry.mesh
 
-        family, degree = self._function_space.split("_")
+        family, degree = self.parameters["function_space"].split("_")
 
         element = dolfin.VectorElement(family, mesh.ufl_cell(), int(degree))
         self.u_space = dolfin.FunctionSpace(mesh, element)
@@ -318,6 +315,7 @@ class Problem:
             dt=dolfin.Constant(1e-3),
             alpha_m=dolfin.Constant(0.2),
             alpha_f=dolfin.Constant(0.4),
+            function_space="P_1",
         )
 
     @property
