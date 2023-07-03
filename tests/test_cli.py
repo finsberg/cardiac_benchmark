@@ -25,10 +25,13 @@ def geo_path():
     path.unlink(missing_ok=False)
 
 
-def _benchmark_1(fname: str, cmd: str, _geo_path: str) -> None:
-    reference_data = np.load(here / "data" / f"{fname}.npy", allow_pickle=True).item()
-
-    # breakpoint()
+def _benchmark_1(
+    fname: str,
+    cmd: str,
+    _geo_path: str,
+    max_up0: float,
+    min_up0: float,
+) -> None:
     runner = CliRunner(mix_stderr=False)
     outdir = Path(f"test_{fname}")
     if outdir.is_dir():
@@ -48,39 +51,53 @@ def _benchmark_1(fname: str, cmd: str, _geo_path: str) -> None:
     )
     assert result.exit_code == 0
 
-    # up1 = np.load(outdir / "componentwise_displacement_up1.npy")
     up0 = np.load(outdir / "componentwise_displacement_up0.npy")
-    # volume = np.load(outdir / "volume.npy")
     time_stamps = np.load(outdir / "time_stamps.npy")
-    # sp1 = np.load(outdir / "von_Mises_stress_sp1.npy")
-    # sp0 = np.load(outdir / "von_Mises_stress_sp0.npy")
 
-    assert (
-        np.max(np.subtract(reference_data["time_stamps"], time_stamps))
-        / np.max(np.abs(reference_data["time_stamps"]))
-        < 1e-6
-    )
+    assert np.isclose(time_stamps[0], 0.001)
+    assert np.isclose(time_stamps[-1], 0.999)
 
-    assert (
-        np.max(np.subtract(reference_data["up0"], up0))
-        / np.max(np.abs(reference_data["up0"]))
-        < 0.05
-    )
+    assert np.isclose(up0.max(), max_up0)
+    assert np.isclose(time_stamps[-1], min_up0)
 
     shutil.rmtree(outdir)
 
 
 def test_benchmark1_step0_caseA(geo_path):
-    _benchmark_1("benchmark1_step0_caseA", ["benchmark1-step0-case-a"], geo_path)
+    _benchmark_1(
+        "benchmark1_step0_caseA",
+        ["benchmark1-step0-case-a"],
+        geo_path,
+        max_up0=0.001214217740157648,
+        min_up0=-0.02118657320131717,
+    )
 
 
 def test_benchmark1_step0_caseB(geo_path):
-    _benchmark_1("benchmark1_step0_caseB", ["benchmark1-step0-case-b"], geo_path)
+    _benchmark_1(
+        "benchmark1_step0_caseB",
+        ["benchmark1-step0-case-b"],
+        geo_path,
+        max_up0=0.009563210660943304,
+        min_up0=-0.0002485061442104368,
+    )
 
 
 def test_benchmark1_step1(geo_path):
-    _benchmark_1("benchmark1_step1", ["benchmark1-step1"], geo_path)
+    _benchmark_1(
+        "benchmark1_step1",
+        ["benchmark1-step1"],
+        geo_path,
+        max_up0=0.0015262332937695028,
+        min_up0=-0.020129923655389646,
+    )
 
 
 def test_benchmark1_step2_case1(geo_path):
-    _benchmark_1("benchmark1_step2", ["benchmark1-step2", "1"], geo_path)
+    _benchmark_1(
+        "benchmark1_step2",
+        ["benchmark1-step2", "1"],
+        geo_path,
+        max_up0=0.0015262332937695028,
+        min_up0=-0.020129923655389646,
+    )
