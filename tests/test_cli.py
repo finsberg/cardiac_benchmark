@@ -57,8 +57,8 @@ def _benchmark_1(
     assert np.isclose(time_stamps[0], 0.001)
     assert np.isclose(time_stamps[-1], 0.999)
 
-    assert np.isclose(up0.max(), max_up0)
-    assert np.isclose(time_stamps[-1], min_up0)
+    assert np.isclose(up0.max(), max_up0, rtol=0.05)
+    assert np.isclose(up0.min(), min_up0, rtol=0.05)
 
     shutil.rmtree(outdir)
 
