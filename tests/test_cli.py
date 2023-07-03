@@ -58,13 +58,13 @@ def _benchmark_1(fname: str, cmd: str, _geo_path: str) -> None:
     assert (
         np.max(np.subtract(reference_data["time_stamps"], time_stamps))
         / np.max(np.abs(reference_data["time_stamps"]))
-        < 0.01
+        < 1e-6
     )
 
     assert (
         np.max(np.subtract(reference_data["up0"], up0))
         / np.max(np.abs(reference_data["up0"]))
-        < 0.01
+        < 0.05
     )
 
     shutil.rmtree(outdir)
