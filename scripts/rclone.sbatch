@@ -17,7 +17,7 @@
 # $ sbatch --cpus-per-task=32 --time=02:00:00 hello.sbatch
 #SBATCH --job-name="cardiac-benchmark"
 #SBATCH --partition=defq
-#SBATCH --time=0-24:00:00
+#SBATCH --time=0-04:00:00
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=8
@@ -25,15 +25,8 @@
 #SBATCH --error=slurm-output/%j-%x-stderr.txt
 
 
-module use /cm/shared/ex3-modules/0.6.1/modulefiles
-module load python-fenics-dolfin-2019.1.0.post0
+# module use /cm/shared/ex3-modules/0.6.1/modulefiles
+# module load python-fenics-dolfin-2019.1.0.post0
 
-LIBRARY_ROOT=/home/henriknf/local/src/cardiac_benchmark
 
-SCRATCH_DIRECTORY=/global/D1/homes/${USER}/cardiac_benchmark/benchmark1/step2/case${1}/${SLURM_JOBID}
-mkdir -p ${SCRATCH_DIRECTORY}
-echo "Scratch directory: ${SCRATCH_DIRECTORY}"
-
-echo "Run command: ${LIBRARY_ROOT}/venv/bin/cardiac-benchmark benchmark1-step1 --outdir "${SCRATCH_DIRECTORY}" --geometry-path "${LIBRARY_ROOT}/geometry.h5""
-srun ${LIBRARY_ROOT}/venv/bin/cardiac-benchmark benchmark1-step1 ${1} --outdir "${SCRATCH_DIRECTORY}" --geometry-path "/home/henriknf/local/src/cardiac_benchmark/geometry.h5"
-cp slurm-output/${SLURM_JOBID}-cardiac-benchmark-std* ${SCRATCH_DIRECTORY}
+rclone copy --progress /global/D1/homes/${USER}/cardiac_benchmark dropbox:cardiac_benchmark_results
