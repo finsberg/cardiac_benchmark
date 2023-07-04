@@ -1,6 +1,5 @@
 import logging
 from pathlib import Path
-from typing import Any
 from typing import Dict
 from typing import Optional
 from typing import Union
@@ -14,6 +13,7 @@ from . import pressure_model
 from .geometry import LVGeometry
 from .material import HolzapfelOgden
 from .problem import LVProblem
+from .utils import _update_parameters
 
 HERE = Path(__file__).absolute().parent
 logger = logging.getLogger(__name__)
@@ -74,31 +74,13 @@ def default_parameters():
     return dict(
         problem_parameters=LVProblem.default_parameters(),
         activation_parameters=activation_model.default_parameters(),
-        pressure_parameters=pressure_model.default_parameters(),
+        pressure_parameters=pressure_model.default_parameters_benchmark1(),
         material_parameters=HolzapfelOgden.default_parameters(),
         mesh_parameters=LVGeometry.default_mesh_parameters(),
         fiber_parameters=LVGeometry.default_fiber_parameters(),
         outpath="results.h5",
         geometry_path="geometry.h5",
     )
-
-
-def _update_parameters(
-    _par: Dict[str, Any],
-    par: Optional[Dict[str, Any]],
-) -> Dict[str, Any]:
-    if par is None:
-        par = {}
-    for key, value in par.items():
-        if key not in _par:
-            logger.warning(f"Invalid key {key}")
-            continue
-
-        if isinstance(_par[key], dolfin.Constant):
-            _par[key].assign(value)
-        else:
-            _par[key] = value
-    return _par
 
 
 def run(
@@ -121,7 +103,7 @@ def run(
         problem_parameters,
     )
     pressure_parameters = _update_parameters(
-        pressure_model.default_parameters(),
+        pressure_model.default_parameters_benchmark1(),
         pressure_parameters,
     )
     activation_parameters = _update_parameters(

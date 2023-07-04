@@ -12,17 +12,7 @@ here = Path(__file__).parent.absolute()
 
 @pytest.fixture(scope="module")
 def geo_path():
-    runner = CliRunner()
-    path = Path("test_geometry.h5")
-    path.unlink(missing_ok=True)
-    # Use a much coarser geometry to speed up the tests
-    result = runner.invoke(
-        app,
-        ["create-geometry", path.as_posix(), "--mesh-size-factor=5.0"],
-    )
-    assert result.exit_code == 0
-    yield path.absolute().as_posix()
-    path.unlink(missing_ok=False)
+    yield (here / "test_geometry.h5").absolute().as_posix()
 
 
 def _benchmark_1(

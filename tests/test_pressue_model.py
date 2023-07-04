@@ -1,11 +1,11 @@
 import numpy as np
 
 from cardiac_benchmark.pressure_model import pressure_function
-from cardiac_benchmark.problem import Problem
+from cardiac_benchmark.problem import LVProblem
 
 
 def test_active_model_default_parameters():
-    problem_parameters = Problem.default_parameters()
+    problem_parameters = LVProblem.default_parameters()
     dt = float(problem_parameters["dt"])
     time = np.arange(dt, 1, dt)
     t_eval = time - float(problem_parameters["alpha_f"]) * dt
