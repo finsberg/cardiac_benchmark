@@ -51,16 +51,17 @@ def _benchmark_1(
     )
     assert result.exit_code == 0
 
-    # up0 = np.load(outdir / "componentwise_displacement_up0.npy")
+    up0 = np.load(outdir / "componentwise_displacement_up0.npy")
     time_stamps = np.load(outdir / "time_stamps.npy")
 
     assert np.isclose(time_stamps[0], 0.001)
     assert np.isclose(time_stamps[-1], 0.999)
 
-    # breakpoint()
+    computed_max = up0.max(0)
+    computed_min = up0.min(0)
 
-    # assert np.isclose(up0.max(), max_up0)
-    # assert np.isclose(up0.min(), min_up0)
+    assert np.allclose(computed_max, max_up0)
+    assert np.allclose(computed_min, min_up0)
 
     shutil.rmtree(outdir)
 
@@ -70,8 +71,8 @@ def test_benchmark1_step0_caseA(geo_path):
         "benchmark1_step0_caseA",
         ["benchmark1-step0-case-a"],
         geo_path,
-        max_up0=0.001214217740157648,
-        min_up0=-0.02118657320131717,
+        max_up0=(0.0, 0.00113854, 0.00121422),
+        min_up0=(-2.11865732e-02, -7.07775436e-06, -3.90594965e-04),
     )
 
 
@@ -80,8 +81,8 @@ def test_benchmark1_step0_caseB(geo_path):
         "benchmark1_step0_caseB",
         ["benchmark1-step0-case-b"],
         geo_path,
-        max_up0=0.009563210660943304,
-        min_up0=-0.0002485061442104368,
+        max_up0=(9.56321066e-03, 4.23419184e-05, 1.52382853e-04),
+        min_up0=(6.58201731e-08, -2.48506144e-04, -1.50213958e-08),
     )
 
 
@@ -90,8 +91,8 @@ def test_benchmark1_step1(geo_path):
         "benchmark1_step1",
         ["benchmark1-step1"],
         geo_path,
-        max_up0=0.0015262332937695028,
-        min_up0=-0.020129923655389646,
+        max_up0=(0.00029864, 0.00152623, 0.0012752),
+        min_up0=(-2.01299237e-02, -4.59802750e-06, -3.08946192e-04),
     )
 
 
@@ -100,6 +101,6 @@ def test_benchmark1_step2_case1(geo_path):
         "benchmark1_step2",
         ["benchmark1-step2", "1"],
         geo_path,
-        max_up0=0.0015262332937695028,
-        min_up0=-0.020129923655389646,
+        max_up0=(0.00029864, 0.00152623, 0.0012752),
+        min_up0=(-2.01299237e-02, -4.59802750e-06, -3.08946192e-04),
     )
