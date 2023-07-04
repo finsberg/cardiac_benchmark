@@ -10,7 +10,7 @@ import dolfin
 import typer
 
 from . import step2 as _step2
-from .geometry import EllipsoidGeometry
+from .geometry import LVGeometry
 from .postprocess import ConstantEncoder
 from .postprocess import DataLoader
 
@@ -280,7 +280,7 @@ def create_geometry(
     function_space: str = "Quadrature_4",
     mesh_size_factor: float = 1.0,
 ):
-    geo = EllipsoidGeometry.from_parameters(
+    geo = LVGeometry.from_parameters(
         fiber_params={
             "alpha_endo": alpha_endo,
             "alpha_epi": alpha_epi,

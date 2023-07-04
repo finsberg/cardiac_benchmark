@@ -30,6 +30,10 @@ GmshGeometry = namedtuple(
     ["mesh", "cfun", "ffun", "efun", "vfun", "markers"],
 )
 
+
+HeartGeometry = Union["LVGeometry", "BiVGeometry"]
+
+
 logger = logging.getLogger(__name__)
 
 
@@ -257,7 +261,7 @@ def create_benchmark_ellipsoid_mesh_gmsh(
     gmsh.finalize()
 
 
-def save_geometry(fname, geo: "EllipsoidGeometry") -> None:
+def save_geometry(fname, geo: HeartGeometry) -> None:
     logger.info(f"Save geometry to {fname}")
     fname = Path(fname)
     if fname.is_file():
@@ -279,7 +283,7 @@ def save_geometry(fname, geo: "EllipsoidGeometry") -> None:
                 h5file.attributes("mesh")[name] = f"{marker}_{dim}"
 
 
-def load_geometry(fname) -> "EllipsoidGeometry":
+def load_geometry(fname) -> HeartGeometry:
     fname = Path(fname)
     if not fname.is_file():
         raise FileNotFoundError(f"File {fname} does not exist")
@@ -319,7 +323,8 @@ def load_geometry(fname) -> "EllipsoidGeometry":
         n0 = dolfin.Function(V)
         h5file.read(n0, "n0")
 
-    return EllipsoidGeometry(
+    cls = BiVGeometry if "ENDO_RV" in markers else LVGeometry
+    return cls(
         mesh=mesh,
         cfun=cfun,
         ffun=ffun,
@@ -332,7 +337,7 @@ def load_geometry(fname) -> "EllipsoidGeometry":
     )
 
 
-class EllipsoidGeometry:
+class LVGeometry:
     """
     Create a truncated ellipsoidal geometry,
     defined through the coordinates:
@@ -376,7 +381,7 @@ class EllipsoidGeometry:
         cls,
         mesh_params: Optional[Dict[str, float]] = None,
         fiber_params: Optional[Dict[str, Union[float, str]]] = None,
-    ) -> "EllipsoidGeometry":
+    ) -> "LVGeometry":
         """Load geometry from parameters
 
         Parameters
@@ -388,15 +393,15 @@ class EllipsoidGeometry:
 
         Returns
         -------
-        EllipsoidGeometry
+        LVGeometry
             The geometry
         """
         mesh_params = mesh_params or {}
-        mesh_parameters = EllipsoidGeometry.default_mesh_parameters()
+        mesh_parameters = LVGeometry.default_mesh_parameters()
         mesh_parameters.update(mesh_params)
 
         fiber_params = fiber_params or {}
-        fiber_parameters = EllipsoidGeometry.default_fiber_parameters()
+        fiber_parameters = LVGeometry.default_fiber_parameters()
         fiber_parameters.update(fiber_params)
 
         obj = cls()
@@ -575,5 +580,5 @@ class BiVGeometry:
 
 
 if __name__ == "__main__":
-    geo = EllipsoidGeometry.from_parameters()
+    geo = LVGeometry.from_parameters()
     dolfin.File("ffun.pvd") << geo.ffun

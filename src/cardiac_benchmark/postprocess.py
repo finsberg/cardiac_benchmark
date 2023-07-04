@@ -20,6 +20,8 @@ from dolfin import VectorElement  # noqa: F401
 from .geometry import load_geometry
 from .geometry import save_geometry
 from .material import HolzapfelOgden
+from .problem import BiVProblem  # noqa: F401
+from .problem import LVProblem  # noqa: F401
 from .problem import Problem
 
 
@@ -51,8 +53,8 @@ def close_h5pyfile(h5pyfile):
 def save_problem(
     fname,
     problem: Problem,
-    pressure_parameters: Dict[str, float],
-    activation_parameters: Dict[str, float],
+    pressure_parameters: Optional[Dict[str, float]],
+    activation_parameters: Optional[Dict[str, float]],
 ):
     path = Path(fname)
     if path.is_file():
@@ -70,18 +72,21 @@ def save_problem(
                 if isinstance(v, str):
                     continue  # Skip the function space
                 group.create_dataset(k, data=float(v))
+            group.attrs.create("cls", type(problem).__name__)
 
             group = h5file.create_group("material_parameters")
             for k, v in problem.material.parameters.items():
                 group.create_dataset(k, data=float(v))
 
-            group = h5file.create_group("pressure_parameters")
-            for k, v in pressure_parameters.items():
-                group.create_dataset(k, data=float(v))
+            if pressure_parameters is not None:
+                group = h5file.create_group("pressure_parameters")
+                for k, v in pressure_parameters.items():
+                    group.create_dataset(k, data=float(v))
 
-            group = h5file.create_group("activation_parameters")
-            for k, v in activation_parameters.items():
-                group.create_dataset(k, data=float(v))
+            if activation_parameters is not None:
+                group = h5file.create_group("activation_parameters")
+                for k, v in activation_parameters.items():
+                    group.create_dataset(k, data=float(v))
 
             h5file.create_group("p")
             h5file.create_group("tau")
@@ -122,6 +127,7 @@ def load_problem(fname) -> SavedProblem:
 
             for k, v in h5file["problem_parameters"].items():
                 problem_parameters[k] = v[...].tolist()
+            cls = eval(h5file["problem_parameters"].attrs["cls"])
 
     material_parameters = dolfin.MPI.comm_world.bcast(material_parameters, root=0)
     signature = dolfin.MPI.comm_world.bcast(signature, root=0)
@@ -139,7 +145,7 @@ def load_problem(fname) -> SavedProblem:
         parameters=material_parameters,
     )
 
-    problem = Problem(
+    problem = cls(
         geometry=geometry,
         material=material,
         parameters=problem_parameters,
@@ -158,8 +164,8 @@ class DataCollector:
         self,
         path,
         problem: Problem,
-        pressure_parameters: Dict[str, float],
-        actvation_parameters: Dict[str, float],
+        pressure_parameters: Optional[Dict[str, float]] = None,
+        actvation_parameters: Optional[Dict[str, float]] = None,
     ) -> None:
         self._path = Path(path)
         self._comm = dolfin.MPI.comm_world
@@ -210,7 +216,6 @@ class DataLoader:
     def __init__(
         self,
         result_file: Union[str, Path],
-        outdir: Optional[Union[str, Path]] = None,
     ) -> None:
         self._h5file_py = None
         self._h5file = None

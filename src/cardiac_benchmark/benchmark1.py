@@ -11,9 +11,9 @@ import numpy as np
 from . import activation_model
 from . import postprocess
 from . import pressure_model
-from .geometry import EllipsoidGeometry
+from .geometry import LVGeometry
 from .material import HolzapfelOgden
-from .problem import Problem
+from .problem import LVProblem
 
 HERE = Path(__file__).absolute().parent
 logger = logging.getLogger(__name__)
@@ -52,32 +52,32 @@ def get_geometry(
     path: Path,
     mesh_parameters: Optional[Dict[str, float]] = None,
     fiber_parameters: Optional[Dict[str, Union[float, str]]] = None,
-) -> EllipsoidGeometry:
+) -> LVGeometry:
     if not path.is_file():
         mesh_parameters = _update_parameters(
-            EllipsoidGeometry.default_mesh_parameters(),
+            LVGeometry.default_mesh_parameters(),
             mesh_parameters,
         )
         fiber_parameters = _update_parameters(
-            EllipsoidGeometry.default_fiber_parameters(),
+            LVGeometry.default_fiber_parameters(),
             fiber_parameters,
         )
-        geo = EllipsoidGeometry.from_parameters(
+        geo = LVGeometry.from_parameters(
             fiber_params=fiber_parameters,
             mesh_params=mesh_parameters,
         )
         geo.save(path)
-    return EllipsoidGeometry.from_file(path)
+    return LVGeometry.from_file(path)
 
 
 def default_parameters():
     return dict(
-        problem_parameters=Problem.default_parameters(),
+        problem_parameters=LVProblem.default_parameters(),
         activation_parameters=activation_model.default_parameters(),
         pressure_parameters=pressure_model.default_parameters(),
         material_parameters=HolzapfelOgden.default_parameters(),
-        mesh_parameters=EllipsoidGeometry.default_mesh_parameters(),
-        fiber_parameters=EllipsoidGeometry.default_fiber_parameters(),
+        mesh_parameters=LVGeometry.default_mesh_parameters(),
+        fiber_parameters=LVGeometry.default_fiber_parameters(),
         outpath="results.h5",
         geometry_path="geometry.h5",
     )
@@ -117,7 +117,7 @@ def run(
     outdir.mkdir(parents=True, exist_ok=True)
 
     problem_parameters = _update_parameters(
-        Problem.default_parameters(),
+        LVProblem.default_parameters(),
         problem_parameters,
     )
     pressure_parameters = _update_parameters(
@@ -133,11 +133,11 @@ def run(
         material_parameters,
     )
     mesh_parameters = _update_parameters(
-        EllipsoidGeometry.default_mesh_parameters(),
+        LVGeometry.default_mesh_parameters(),
         mesh_parameters,
     )
     fiber_parameters = _update_parameters(
-        EllipsoidGeometry.default_fiber_parameters(),
+        LVGeometry.default_fiber_parameters(),
         fiber_parameters,
     )
 
@@ -196,7 +196,7 @@ def run(
         tau=tau,
         parameters=material_parameters,
     )
-    problem = Problem(
+    problem = LVProblem(
         geometry=geo,
         material=material,
         parameters=problem_parameters,

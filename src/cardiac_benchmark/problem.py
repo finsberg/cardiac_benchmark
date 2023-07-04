@@ -1,9 +1,10 @@
+import abc
 import typing
 
 import dolfin
 import ufl
 
-from .geometry import EllipsoidGeometry
+from .geometry import HeartGeometry
 from .material import HolzapfelOgden
 from .solver import NonlinearProblem
 from .solver import NonlinearSolver
@@ -32,7 +33,7 @@ def interpolate(x0: T, x1: T, alpha: float):
     return alpha * x0 + (1 - alpha) * x1
 
 
-class Problem:
+class Problem(abc.ABC):
     r"""
     Class for the mechanics problem
 
@@ -48,7 +49,7 @@ class Problem:
 
     def __init__(
         self,
-        geometry: EllipsoidGeometry,
+        geometry: HeartGeometry,
         material: HolzapfelOgden,
         parameters: typing.Optional[
             typing.Dict[str, typing.Union[dolfin.Constant, str]]
@@ -59,7 +60,7 @@ class Problem:
 
         Parameters
         ----------
-        geometry : EllipsoidGeometry
+        geometry : HeartGeometry
             The geometry
         material : HolzapfelOgden
             The material
@@ -71,7 +72,8 @@ class Problem:
         self.material = material
 
         parameters = parameters or {}
-        self.parameters = Problem.default_parameters()
+
+        self.parameters = type(self).default_parameters()
         self.parameters.update(parameters)
 
         self.solver_parameters = NonlinearSolver.default_solver_parameters()
@@ -79,6 +81,11 @@ class Problem:
             self.solver_parameters.update(**solver_parameters)
         self._init_spaces()
         self._init_forms()
+
+    @staticmethod
+    @abc.abstractmethod
+    def default_parameters():
+        ...
 
     def _init_spaces(self):
         """Initialize function spaces"""
@@ -116,11 +123,14 @@ class Problem:
 
         return (
             dolfin.inner(P, dolfin.grad(w)) * dolfin.dx
-            + dolfin.inner(self.parameters["p"] * ufl.cofac(F) * self.N, w)
-            * self.ds(self.endo)
+            + self._pressure_term(F, w)
             + dolfin.inner(epi * w, self.N) * self.ds(self.epi)
             + dolfin.inner(top, w) * self.ds(self.top)
         )
+
+    @abc.abstractmethod
+    def _pressure_term(self, F, w):
+        ...
 
     def v(
         self,
@@ -205,11 +215,6 @@ class Problem:
     def ds(self):
         """Surface measure"""
         return dolfin.ds(domain=self.geometry.mesh, subdomain_data=self.geometry.ffun)
-
-    @property
-    def endo(self):
-        """Marker for the endocardium"""
-        return self.geometry.markers["ENDO"][0]
 
     @property
     def epi(self):
@@ -303,21 +308,6 @@ class Problem:
 
         return dolfin.sqrt(abs(von_Mises_squared))
 
-    @staticmethod
-    def default_parameters() -> typing.Dict[str, dolfin.Constant]:
-        return dict(
-            alpha_top=dolfin.Constant(1e5),
-            alpha_epi=dolfin.Constant(1e8),
-            beta_top=dolfin.Constant(5e3),
-            beta_epi=dolfin.Constant(5e3),
-            p=dolfin.Constant(0.0),
-            rho=dolfin.Constant(1e3),
-            dt=dolfin.Constant(1e-3),
-            alpha_m=dolfin.Constant(0.2),
-            alpha_f=dolfin.Constant(0.4),
-            function_space="P_1",
-        )
-
     @property
     def _gamma(self) -> dolfin.Constant:
         """Parameter in the generalized alpha-method"""
@@ -341,3 +331,69 @@ class Problem:
 
         self._update_fields()
         return True
+
+
+class LVProblem(Problem):
+    @property
+    def endo(self):
+        """Marker for the endocardium"""
+        return self.geometry.markers["ENDO"][0]
+
+    def _pressure_term(self, F, w):
+        return dolfin.inner(self.parameters["p"] * ufl.cofac(F) * self.N, w) * self.ds(
+            self.endo,
+        )
+
+    @staticmethod
+    def default_parameters() -> typing.Dict[str, dolfin.Constant]:
+        return dict(
+            alpha_top=dolfin.Constant(1e5),
+            alpha_epi=dolfin.Constant(1e8),
+            beta_top=dolfin.Constant(5e3),
+            beta_epi=dolfin.Constant(5e3),
+            p=dolfin.Constant(0.0),
+            rho=dolfin.Constant(1e3),
+            dt=dolfin.Constant(1e-3),
+            alpha_m=dolfin.Constant(0.2),
+            alpha_f=dolfin.Constant(0.4),
+            function_space="P_2",
+        )
+
+
+class BiVProblem(Problem):
+    @property
+    def endo_lv(self):
+        """Marker for the endocardium"""
+        return self.geometry.markers["ENDO_LV"][0]
+
+    @property
+    def endo_rv(self):
+        """Marker for the endocardium"""
+        return self.geometry.markers["ENDO_RV"][0]
+
+    def _pressure_term(self, F, w):
+        return dolfin.inner(
+            self.parameters["plv"] * ufl.cofac(F) * self.N,
+            w,
+        ) * self.ds(self.endo_lv) + dolfin.inner(
+            self.parameters["prv"] * ufl.cofac(F) * self.N,
+            w,
+        ) * self.ds(
+            self.endo_rv,
+        )
+
+    @staticmethod
+    def default_parameters() -> typing.Dict[str, dolfin.Constant]:
+        return dict(
+            alpha_top=dolfin.Constant(1e6),
+            alpha_epi=dolfin.Constant(1e8),
+            beta_top=dolfin.Constant(5e3),
+            beta_epi=dolfin.Constant(5e3),
+            plv=dolfin.Constant(0.0),
+            prv=dolfin.Constant(0.0),
+            rho=dolfin.Constant(1e3),
+            dt=dolfin.Constant(1e-3),
+            alpha_m=dolfin.Constant(0.2),
+            alpha_f=dolfin.Constant(0.4),
+            function_space="P_2",
+        )
