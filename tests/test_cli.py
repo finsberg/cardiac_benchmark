@@ -39,6 +39,7 @@ def _benchmark_1(
             "--function-space=P_1",
         ],
     )
+
     assert result.exit_code == 0
 
     up0 = np.load(outdir / "componentwise_displacement_up0.npy")
