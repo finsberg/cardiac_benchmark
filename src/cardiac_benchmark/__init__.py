@@ -12,6 +12,7 @@ from . import material
 from . import microstructure
 from . import postprocess
 from . import pressure_model
+from . import activation_model
 from . import problem
 from . import solver
 from . import step2
@@ -35,4 +36,5 @@ __all__ = [
     "problem",
     "solver",
     "step2",
+    "activation_model",
 ]
