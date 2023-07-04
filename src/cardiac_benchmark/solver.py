@@ -113,18 +113,19 @@ class NonlinearSolver:
             of the performed computation.
         """
 
-        logger.info("\nSolving NonLinearProblem...", end=" ")
+        msg = logger.info("Solving NonLinearProblem...")
 
         start = time.perf_counter()
         self._solver.solve(self._problem, self._state.vector())
         end = time.perf_counter()
 
-        logger.info(f"Done in {end - start:.3f} s")
+        msg = f"\nDone in {end - start:.3f} s"
 
         residuals = self._snes.getConvergenceHistory()[0]
         num_iterations = self._snes.getLinearSolveIterations()
-        logger.info(f"Iterations    : {num_iterations}")
+        msg += f"\nIterations:   {num_iterations}"
         if num_iterations > 0:
-            logger.info(f"Residual      : {residuals[-1]}")
+            msg += f"\nResidual      : {residuals[-1]}"
 
+        logger.info(msg)
         return num_iterations, self._snes.converged

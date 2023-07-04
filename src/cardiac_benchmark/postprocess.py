@@ -1,4 +1,3 @@
-import json
 import weakref
 from pathlib import Path
 from typing import Dict
@@ -31,14 +30,6 @@ class SavedProblem(NamedTuple):
     time_stamps_str: np.ndarray
     time_stamps: np.ndarray
     signature: ufl.finiteelement.FiniteElementBase
-
-
-class ConstantEncoder(json.JSONEncoder):
-    def default(self, obj):
-        if isinstance(obj, dolfin.Constant):
-            return float(obj)
-        # Let the base class default method raise the TypeError
-        return json.JSONEncoder.default(self, obj)
 
 
 def close_h5file(h5file):

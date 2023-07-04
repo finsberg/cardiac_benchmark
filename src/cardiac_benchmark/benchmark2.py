@@ -34,7 +34,7 @@ def solve(
         zip(time, activation, lv_pressure, rv_pressure),
     ):
         logger.info(
-            f"{i}: Solving for time {t:.3f} with tau = {a}, lvp = {plv_} and rvp = {prv_}",
+            f"{i}: Solving for time {t:.3f} with tau = {a:.3f}, lvp = {plv_:.3f} and rvp = {prv_:.3f}",
         )
 
         tau.assign(a)

@@ -1,4 +1,6 @@
+import json
 import logging
+from pathlib import Path
 from typing import Any
 from typing import Dict
 from typing import Optional
@@ -6,6 +8,16 @@ from typing import Optional
 import dolfin
 
 logger = logging.getLogger(__name__)
+
+
+class ConstantEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, dolfin.Constant):
+            return float(obj)
+        if isinstance(obj, Path):
+            return obj.as_posix()
+        # Let the base class default method raise the TypeError
+        return json.JSONEncoder.default(self, obj)
 
 
 def _update_parameters(

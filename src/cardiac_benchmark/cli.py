@@ -12,8 +12,8 @@ import typer
 
 from . import step2 as _step2
 from .geometry import LVGeometry
-from .postprocess import ConstantEncoder
 from .postprocess import DataLoader
+from .utils import ConstantEncoder
 
 
 app = typer.Typer()
@@ -24,7 +24,7 @@ def setup_logging(loglevel):
     logging.basicConfig(
         level=loglevel,
         format=(
-            "%(process)d[%(asctime)s] - %(levelname)s - "
+            "[%(asctime)s](proc %(process)d) - %(levelname)s - "
             "%(module)s:%(funcName)s:%(lineno)d %(message)s"
         ),
     )
