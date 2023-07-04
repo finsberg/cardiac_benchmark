@@ -25,7 +25,7 @@ dolfin.parameters["form_compiler"]["optimize"] = True
 
 
 def solve(
-    problem,
+    problem: LVProblem,
     tau: dolfin.Constant,
     activation: np.ndarray,
     pressure: np.ndarray,
@@ -35,7 +35,7 @@ def solve(
     store_freq: int = 1,
 ) -> None:
     for i, (t, a, p_) in enumerate(zip(time, activation, pressure)):
-        dolfin.info(f"{i}: Solving for time {t:.3f} with tau = {a} and pressure = {p_}")
+        logger.info(f"{i}: Solving for time {t:.3f} with tau = {a} and pressure = {p_}")
 
         tau.assign(a)
         p.assign(p_)
@@ -160,7 +160,7 @@ def run(
         postprocess.plot_activation_pressure_function(
             t=time,
             activation=activation,
-            pressure=pressure,
+            lv_pressure=pressure,
             outdir=outdir,
         )
 
@@ -195,7 +195,7 @@ def run(
     collector = postprocess.DataCollector(
         result_filepath,
         problem=problem,
-        pressure_parameters=pressure_parameters,
+        pressure_parameters={"lv": pressure_parameters},
         actvation_parameters=activation_parameters,
     )
 

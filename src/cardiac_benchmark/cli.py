@@ -252,8 +252,13 @@ def benchmark2(
     alpha_f: float = 0.4,
     function_space: str = "P_2",
 ) -> int:
-    if outdir is None:
-        outdir = Path("results_benchmark2")
+    if outdir is not None:
+        outdir = Path(outdir).absolute()
+    else:
+        outdir = Path.cwd() / "results_benchmark2"
+
+    outdir.mkdir(exist_ok=True, parents=True)
+    outpath = outdir / "result.h5"
 
     geo_folder = Path("bi-ventricular/bi_ventricular_coarse/xdmf_format")
 
@@ -264,12 +269,25 @@ def benchmark2(
 
     from . import benchmark2
 
-    return benchmark2.run(
-        mesh_file=mesh_file,
-        fiber_file=fiber_file,
-        sheet_file=sheet_file,
-        sheet_normal_file=sheet_normal_file,
-    )
+    params = benchmark2.default_parameters()
+    params["problem_parameters"]["alpha_m"] = alpha_m
+    params["problem_parameters"]["alpha_f"] = alpha_f
+    params["problem_parameters"]["function_space"] = function_space
+
+    if run_benchmark:
+        benchmark2.run(
+            mesh_file=mesh_file,
+            fiber_file=fiber_file,
+            sheet_file=sheet_file,
+            sheet_normal_file=sheet_normal_file,
+            **params,
+        )
+
+    loader = DataLoader(outpath)
+    if run_postprocess:
+        loader.postprocess_all(folder=outdir)
+
+    return 0
 
 
 @app.command(help="Create geometry")
