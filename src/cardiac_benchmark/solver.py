@@ -1,7 +1,11 @@
 """Copied from pulse"""
+import logging
 import time
 
 import dolfin
+
+
+logger = logging.getLogger(__name__)
 
 
 class NonlinearProblem(dolfin.NonlinearProblem):
@@ -41,11 +45,11 @@ class NonlinearSolver:
         self._snes = self._solver.snes()
         self._snes.setConvergenceHistory()
 
-        print(f"Linear Solver : {self._solver.parameters['linear_solver']}")
-        print(f"Preconditioner:  {self._solver.parameters['preconditioner']}")
-        print(f"atol: {self._solver.parameters['absolute_tolerance']}")
-        print(f"rtol: {self._solver.parameters['relative_tolerance']}")
-        print(f" Size          : {self._state.function_space().dim()}")
+        logger.info(f"Linear Solver : {self._solver.parameters['linear_solver']}")
+        logger.info(f"Preconditioner:  {self._solver.parameters['preconditioner']}")
+        logger.info(f"atol: {self._solver.parameters['absolute_tolerance']}")
+        logger.info(f"rtol: {self._solver.parameters['relative_tolerance']}")
+        logger.info(f" Size          : {self._state.function_space().dim()}")
         dolfin.PETScOptions.clear()
 
     def update_parameters(self, parameters):
@@ -109,18 +113,18 @@ class NonlinearSolver:
             of the performed computation.
         """
 
-        print("\nSolving NonLinearProblem...", end=" ")
+        logger.info("\nSolving NonLinearProblem...", end=" ")
 
         start = time.perf_counter()
         self._solver.solve(self._problem, self._state.vector())
         end = time.perf_counter()
 
-        print(f"Done in {end - start:.3f} s")
+        logger.info(f"Done in {end - start:.3f} s")
 
         residuals = self._snes.getConvergenceHistory()[0]
         num_iterations = self._snes.getLinearSolveIterations()
-        print(f"Iterations    : {num_iterations}")
+        logger.info(f"Iterations    : {num_iterations}")
         if num_iterations > 0:
-            print(f"Residual      : {residuals[-1]}")
+            logger.info(f"Residual      : {residuals[-1]}")
 
         return num_iterations, self._snes.converged

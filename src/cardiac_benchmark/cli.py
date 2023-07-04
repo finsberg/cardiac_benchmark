@@ -1,6 +1,7 @@
 """Console script for cardiac-benchmark."""
 import datetime
 import json
+import logging
 import pprint
 from pathlib import Path
 from typing import Optional
@@ -16,6 +17,21 @@ from .postprocess import DataLoader
 
 
 app = typer.Typer()
+logger = logging.getLogger(__name__)
+
+
+def setup_logging(loglevel):
+    logging.basicConfig(
+        level=loglevel,
+        format=(
+            "%(process)d[%(asctime)s] - %(levelname)s - "
+            "%(module)s:%(funcName)s:%(lineno)d %(message)s"
+        ),
+    )
+    dolfin.set_log_level(logging.WARNING)
+    for module in ["matplotlib", "h5py", "FFC", "UFL"]:
+        logger = logging.getLogger(module)
+        logger.setLevel(logging.WARNING)
 
 
 def version_callback(show_version: bool):
@@ -70,7 +86,9 @@ def benchmark1_step_0_1(
     zero_activation: bool = False,
     geometry_path: Optional[Path] = typer.Option(None),
     function_space: str = "P_2",
+    loglevel: int = logging.INFO,
 ) -> int:
+    setup_logging(loglevel=loglevel)
     if outdir is not None:
         outdir = Path(outdir).absolute()
     else:
@@ -99,16 +117,18 @@ def benchmark1_step_0_1(
     params["geometry_path"] = geometry_path.as_posix()
 
     parameters = params.copy()
+    parameters["benchmark"] = 1
     parameters["step"] = step
     parameters["case"] = case
     parameters["outdir"] = outdir.as_posix()
     parameters["timestamp"] = datetime.datetime.now().isoformat()
 
-    typer.echo(
-        f"Running step {step}, case {case} with parameters {pprint.pformat(parameters)}",
+    logger.info(
+        f"Running benchmakr 1 step {step}, "
+        f"case {case} with parameters {pprint.pformat(parameters)}",
     )
     if dolfin.MPI.rank(dolfin.MPI.comm_world) == 0:
-        typer.echo(f"Output will be saved to {outdir}")
+        logger.info(f"Output will be saved to {outdir}")
         (outdir / "parameters.json").write_text(
             json.dumps(parameters, cls=ConstantEncoder),
         )
@@ -136,6 +156,7 @@ def benchmark1_step0_case_A(
     alpha_f: float = 0.4,
     geometry_path: Optional[Path] = typer.Option(None),
     function_space: str = "P_2",
+    loglevel: int = logging.INFO,
 ) -> int:
     if outdir is None:
         outdir = Path("results_benchmark1_step0_caseA")
@@ -151,6 +172,7 @@ def benchmark1_step0_case_A(
         zero_pressure=True,
         geometry_path=geometry_path,
         function_space=function_space,
+        loglevel=loglevel,
     )
 
 
@@ -164,6 +186,7 @@ def benchmark1_step0_case_B(
     alpha_f: float = 0.4,
     geometry_path: Optional[Path] = typer.Option(None),
     function_space: str = "P_2",
+    loglevel: int = logging.INFO,
 ) -> int:
     if outdir is None:
         outdir = Path("results_benchmark1_step0_caseB")
@@ -180,6 +203,7 @@ def benchmark1_step0_case_B(
         zero_pressure=False,
         geometry_path=geometry_path,
         function_space=function_space,
+        loglevel=loglevel,
     )
 
 
@@ -193,6 +217,7 @@ def benchmark1_step1(
     alpha_f: float = 0.4,
     geometry_path: Optional[Path] = typer.Option(None),
     function_space: str = "P_2",
+    loglevel: int = logging.INFO,
 ) -> int:
     if outdir is None:
         outdir = Path("results_benchmark1_step1")
@@ -208,6 +233,7 @@ def benchmark1_step1(
         zero_pressure=False,
         geometry_path=geometry_path,
         function_space=function_space,
+        loglevel=loglevel,
     )
 
     return 0
@@ -223,6 +249,7 @@ def benchmark1_step2(
     alpha_f: float = 0.4,
     geometry_path: Optional[Path] = typer.Option(None),
     function_space: str = "P_2",
+    loglevel: int = logging.INFO,
 ) -> int:
     if outdir is None:
         outdir = Path(f"results_benchmark1_step2/case{case}")
@@ -239,6 +266,7 @@ def benchmark1_step2(
         zero_pressure=False,
         geometry_path=geometry_path,
         function_space=function_space,
+        loglevel=loglevel,
     )
 
 
@@ -251,7 +279,9 @@ def benchmark2(
     alpha_m: float = 0.2,
     alpha_f: float = 0.4,
     function_space: str = "P_2",
+    loglevel: int = logging.INFO,
 ) -> int:
+    setup_logging(loglevel=loglevel)
     if outdir is not None:
         outdir = Path(outdir).absolute()
     else:
@@ -270,9 +300,22 @@ def benchmark2(
     from . import benchmark2
 
     params = benchmark2.default_parameters()
+    params["outpath"] = outpath
     params["problem_parameters"]["alpha_m"] = alpha_m
     params["problem_parameters"]["alpha_f"] = alpha_f
     params["problem_parameters"]["function_space"] = function_space
+
+    parameters = params.copy()
+    parameters["benchmark"] = 2
+    parameters["outdir"] = outdir.as_posix()
+    parameters["timestamp"] = datetime.datetime.now().isoformat()
+
+    logger.info(f"Running benchmakr 2 with parameters {pprint.pformat(parameters)}")
+    if dolfin.MPI.rank(dolfin.MPI.comm_world) == 0:
+        logger.info(f"Output will be saved to {outdir}")
+        (outdir / "parameters.json").write_text(
+            json.dumps(parameters, cls=ConstantEncoder),
+        )
 
     if run_benchmark:
         benchmark2.run(
