@@ -68,36 +68,36 @@ which by default will run benchmark 1 - step 1.
 
 - Create geometry for benchmark 1 (save lv ellipsoidal geometry to `geometry.h5`). Note: requires `gmsh`
     ```
-    cardiac-geometry create-geometry geometry.h5
+    cardiac-benchmark create-geometry geometry.h5
     ```
 
 - Run benchmark 1 step 0 case A
     ```
-    cardiac-geometry benchmark1-step0-case-a
+    cardiac-benchmark benchmark1-step0-case-a
     ```
 - Run benchmark 1 step 0 case B
     ```
-    cardiac-geometry benchmark1-step0-case-b
+    cardiac-benchmark benchmark1-step0-case-b
     ```
 - Run benchmark 1 step 1
     ```
-    cardiac-geometry benchmark1-step1
+    cardiac-benchmark benchmark1-step1
     ```
 - Run benchmark 1 step 2 case N (replace N with an integer between 1 and 16)
     ```
-    cardiac-geometry benchmark1-step2 <N>
+    cardiac-benchmark benchmark1-step2 <N>
     ```
 - Download coarse data for benchmark 2 to a folder called `data_coarse`
     ```
-    cardiac-geometry download-data-benchmark2 coarse --outdir=data_coarse
+    cardiac-benchmark download-data-benchmark2 coarse --outdir=data_coarse
     ```
 - Download fine data for benchmark 2 to a folder called `data_fine`
     ```
-    cardiac-geometry download-data-benchmark2 fine --outdir=data_fine
+    cardiac-benchmark download-data-benchmark2 fine --outdir=data_fine
     ```
 - Run benchmark 2 with fine data
     ```
-    cardiac-geometry benchmark2 data_coarse
+    cardiac-benchmark benchmark2 data_coarse
     ```
 
 
