@@ -3,6 +3,7 @@ import datetime
 import json
 import logging
 import pprint
+from enum import Enum
 from pathlib import Path
 from typing import Optional
 from typing import Union
@@ -18,6 +19,11 @@ from .utils import ConstantEncoder
 
 app = typer.Typer()
 logger = logging.getLogger(__name__)
+
+
+class Resolution(str, Enum):
+    fine = "fine"
+    coarse = "coarse"
 
 
 def setup_logging(loglevel):
@@ -272,7 +278,7 @@ def benchmark1_step2(
 
 @app.command(help="Run benchmark 2")
 def benchmark2(
-    geo_folder: Path = Path("bi-ventricular/bi_ventricular_coarse/xdmf_format"),
+    data_folder: Path,
     outdir: Optional[Path] = typer.Option(None),
     run_benchmark: bool = True,
     run_postprocess: bool = True,
@@ -290,12 +296,14 @@ def benchmark2(
     outdir.mkdir(exist_ok=True, parents=True)
     outpath = outdir / "result.h5"
 
-    geo_folder = Path("bi-ventricular/bi_ventricular_coarse/xdmf_format")
-
-    mesh_file = geo_folder / "bi_ventricular.xdmf"
-    fiber_file = geo_folder / "fibers/bi_ventricular_fiber.h5"
-    sheet_file = geo_folder / "fibers/bi_ventricular_sheet.h5"
-    sheet_normal_file = geo_folder / "fibers/bi_ventricular_sheet_normal.h5"
+    mesh_file = data_folder / "bi_ventricular.xdmf"
+    assert mesh_file.is_file(), f"Missing {mesh_file}"
+    fiber_file = data_folder / "fibers/bi_ventricular_fiber.h5"
+    assert fiber_file.is_file(), f"Missing {fiber_file}"
+    sheet_file = data_folder / "fibers/bi_ventricular_sheet.h5"
+    assert sheet_file.is_file(), f"Missing {sheet_file}"
+    sheet_normal_file = data_folder / "fibers/bi_ventricular_sheet_normal.h5"
+    assert sheet_normal_file.is_file(), f"Missing {sheet_normal_file}"
 
     from . import benchmark2
 
@@ -331,6 +339,65 @@ def benchmark2(
         loader.postprocess_all(folder=outdir)
 
     return 0
+
+
+@app.command(help="Download and extract data for benchmark2")
+def download_data_benchmark2(
+    resolution: Resolution,
+    outdir: Optional[Path] = typer.Option(None),
+):
+    setup_logging(loglevel=logging.INFO)
+    import urllib.request
+
+    data = {
+        Resolution.coarse: {
+            "mesh_h5": "https://drive.google.com/uc?id=1ZOl2NWeQbQVhKcLFlC81ZTEZ-EY_Dwrj&export=download",
+            "mesh_xdmf": "https://drive.google.com/uc?id=1ijbYNyEFxmRAgdztN2Aw9Ll_VsWz7BSE&export=download",
+            "fiber": "https://drive.google.com/uc?id=1ZIlNPxLxdCVdMqTlZzoWdliBqKN-qNWd&export=download",
+            "sheet": "https://drive.google.com/uc?id=1EmYFua-_dFU3_OY_0PJVmnOS2QFyYIf4&export=download",
+            "sheet_normal": "https://drive.google.com/uc?id=1rejGIziVkAJFssLFF38oVMaWh9a4F94I&export=download",
+        },
+        Resolution.fine: {
+            "mesh_h5": "https://drive.google.com/uc?id=16f9LXN3jB-nEDtvhbIA1O0QZB6cCGd78&export=download",
+            "mesh_xdmf": "https://drive.google.com/uc?id=1CTG17jPe6y6aZMnqmSM4n-OHgc9S3QWN&export=download",
+            "fiber": "https://drive.google.com/uc?id=1WzTMCfwy1Sxjnp7cmPT5WW6vBQ15aET-&export=download",
+            "sheet": "https://drive.google.com/uc?id=13ESPrIFBvy2Qi8FflcZtefmy2obvpuiz&export=download",
+            "sheet_normal": "https://drive.google.com/uc?id=1gTORU_BarcNKJAiFc9WjSLwGAIomJghN&export=download",
+        },
+    }
+
+    if outdir is None:
+        outdir = Path.cwd() / f"data_benchmark2_{resolution.name}"
+    outdir.mkdir(exist_ok=True, parents=True)
+    fiberdir = outdir / "fibers"
+    fiberdir.mkdir(exist_ok=True)
+    logger.info(f"Download {resolution.name} data for benchmark to to {outdir}")
+
+    logger.info("Download bi_ventricular.h5")
+    urllib.request.urlretrieve(
+        data[resolution]["mesh_h5"],
+        outdir / "bi_ventricular.h5",
+    )
+    logger.info("Download bi_ventricular.xdmf")
+    urllib.request.urlretrieve(
+        data[resolution]["mesh_xdmf"],
+        outdir / "bi_ventricular.xdmf",
+    )
+    logger.info("Download bi_ventricular_fiber.h5")
+    urllib.request.urlretrieve(
+        data[resolution]["fiber"],
+        fiberdir / "bi_ventricular_fiber.h5",
+    )
+    logger.info("Download bi_ventricular_sheet.h5")
+    urllib.request.urlretrieve(
+        data[resolution]["sheet"],
+        fiberdir / "bi_ventricular_sheet.h5",
+    )
+    logger.info("Download bi_ventricular_sheet_normal.h5")
+    urllib.request.urlretrieve(
+        data[resolution]["sheet_normal"],
+        fiberdir / "bi_ventricular_sheet_normal.h5",
+    )
 
 
 @app.command(help="Create geometry")

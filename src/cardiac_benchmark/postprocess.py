@@ -85,10 +85,8 @@ def save_problem(
                 for k, v in activation_parameters.items():
                     group.create_dataset(k, data=float(v))
 
-            if isinstance(problem, LVProblem):
-                h5file.create_group("p")
-            else:
-                h5file.create_group("plv")
+            h5file.create_group("plv")
+            if isinstance(problem, BiVProblem):
                 h5file.create_group("prv")
             h5file.create_group("tau")
 
@@ -328,11 +326,10 @@ class DataLoader:
         prv = []
         tau = []
         if dolfin.MPI.rank(self.comm) == 0:
+            plv = self._h5file_py["plv"][t][...].tolist()
             if self.geo_is_biv:
-                plv = self._h5file_py["plv"][t][...].tolist()
                 prv = self._h5file_py["prv"][t][...].tolist()
-            else:
-                plv = self._h5file_py["p"][t][...].tolist()
+
             tau = self._h5file_py["tau"][t][...].tolist()
         plv = self.comm.bcast(plv, root=0)
         prv = self.comm.bcast(prv, root=0)
