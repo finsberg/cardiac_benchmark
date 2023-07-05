@@ -8,7 +8,7 @@ import numpy as np
 import scipy.integrate
 
 
-def default_parameters():
+def default_parameters_benchmark1():
     return dict(
         t_sys_pre=0.17,
         t_dias_pre=0.484,
@@ -22,34 +22,58 @@ def default_parameters():
     )
 
 
+def default_lv_parameters_benchmark2():
+    return dict(
+        t_sys_pre=0.17,
+        t_dias_pre=0.484,
+        gamma=0.005,
+        a_max=5.0,
+        a_min=-30.0,
+        alpha_pre=5.0,
+        alpha_mid=15.0,
+        sigma_pre=12000.0,
+        sigma_mid=16000.0,
+    )
+
+
+def default_rv_parameters_benchmark2():
+    return dict(
+        t_sys_pre=0.17,
+        t_dias_pre=0.484,
+        gamma=0.005,
+        a_max=5.0,
+        a_min=-30.0,
+        alpha_pre=1.0,
+        alpha_mid=10.0,
+        sigma_pre=3000.0,
+        sigma_mid=4000.0,
+    )
+
+
 def pressure_function(
     t_span: Tuple[float, float],
+    parameters: Dict[str, float],
     t_eval: Optional[np.ndarray] = None,
-    parameters: Optional[Dict[str, float]] = None,
 ) -> np.ndarray:
-    params = default_parameters()
-    if parameters is not None:
-        params.update(parameters)
-
-    print(f"Solving pressure model with parameters: {pprint.pformat(params)}")
+    print(f"Solving pressure model with parameters: {pprint.pformat(parameters)}")
 
     f = (
         lambda t: 0.25
-        * (1 + math.tanh((t - params["t_sys_pre"]) / params["gamma"]))
-        * (1 - math.tanh((t - params["t_dias_pre"]) / params["gamma"]))
+        * (1 + math.tanh((t - parameters["t_sys_pre"]) / parameters["gamma"]))
+        * (1 - math.tanh((t - parameters["t_dias_pre"]) / parameters["gamma"]))
     )
-    a = lambda t: params["a_max"] * f(t) + params["a_min"] * (1 - f(t))
+    a = lambda t: parameters["a_max"] * f(t) + parameters["a_min"] * (1 - f(t))
 
     f_pre = lambda t: 0.5 * (
-        1 - math.tanh((t - params["t_dias_pre"]) / params["gamma"])
+        1 - math.tanh((t - parameters["t_dias_pre"]) / parameters["gamma"])
     )
-    b = lambda t: a(t) + params["alpha_pre"] * f_pre(t) + params["alpha_mid"]
+    b = lambda t: a(t) + parameters["alpha_pre"] * f_pre(t) + parameters["alpha_mid"]
 
     def rhs(t, p):
         return (
             -abs(b(t)) * p
-            + params["sigma_mid"] * max(b(t), 0)
-            + params["sigma_pre"] * max(f_pre(t), 0)
+            + parameters["sigma_mid"] * max(b(t), 0)
+            + parameters["sigma_pre"] * max(f_pre(t), 0)
         )
 
     res = scipy.integrate.solve_ivp(

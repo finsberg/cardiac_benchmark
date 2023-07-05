@@ -1,4 +1,3 @@
-import json
 import weakref
 from pathlib import Path
 from typing import Dict
@@ -17,9 +16,12 @@ from dolfin import FiniteElement  # noqa: F401
 from dolfin import tetrahedron  # noqa: F401
 from dolfin import VectorElement  # noqa: F401
 
+from .geometry import BiVGeometry
 from .geometry import load_geometry
 from .geometry import save_geometry
 from .material import HolzapfelOgden
+from .problem import BiVProblem  # noqa: F401
+from .problem import LVProblem  # noqa: F401
 from .problem import Problem
 
 
@@ -28,14 +30,6 @@ class SavedProblem(NamedTuple):
     time_stamps_str: np.ndarray
     time_stamps: np.ndarray
     signature: ufl.finiteelement.FiniteElementBase
-
-
-class ConstantEncoder(json.JSONEncoder):
-    def default(self, obj):
-        if isinstance(obj, dolfin.Constant):
-            return float(obj)
-        # Let the base class default method raise the TypeError
-        return json.JSONEncoder.default(self, obj)
 
 
 def close_h5file(h5file):
@@ -51,8 +45,8 @@ def close_h5pyfile(h5pyfile):
 def save_problem(
     fname,
     problem: Problem,
-    pressure_parameters: Dict[str, float],
-    activation_parameters: Dict[str, float],
+    pressure_parameters: Optional[Dict[str, Dict[str, float]]],
+    activation_parameters: Optional[Dict[str, float]],
 ):
     path = Path(fname)
     if path.is_file():
@@ -70,20 +64,30 @@ def save_problem(
                 if isinstance(v, str):
                     continue  # Skip the function space
                 group.create_dataset(k, data=float(v))
+            group.attrs.create("cls", type(problem).__name__)
 
             group = h5file.create_group("material_parameters")
             for k, v in problem.material.parameters.items():
                 group.create_dataset(k, data=float(v))
 
-            group = h5file.create_group("pressure_parameters")
-            for k, v in pressure_parameters.items():
-                group.create_dataset(k, data=float(v))
+            if pressure_parameters is not None:
+                group = h5file.create_group("pressure_parameters")
 
-            group = h5file.create_group("activation_parameters")
-            for k, v in activation_parameters.items():
-                group.create_dataset(k, data=float(v))
+                for key in ["lv", "rv"]:
+                    if key not in pressure_parameters:
+                        continue
+                    subgroup = group.create_group(key)
+                    for k, v in pressure_parameters[key].items():
+                        subgroup.create_dataset(k, data=float(v))
 
-            h5file.create_group("p")
+            if activation_parameters is not None:
+                group = h5file.create_group("activation_parameters")
+                for k, v in activation_parameters.items():
+                    group.create_dataset(k, data=float(v))
+
+            h5file.create_group("plv")
+            if isinstance(problem, BiVProblem):
+                h5file.create_group("prv")
             h5file.create_group("tau")
 
 
@@ -122,6 +126,7 @@ def load_problem(fname) -> SavedProblem:
 
             for k, v in h5file["problem_parameters"].items():
                 problem_parameters[k] = v[...].tolist()
+            cls = eval(h5file["problem_parameters"].attrs["cls"])
 
     material_parameters = dolfin.MPI.comm_world.bcast(material_parameters, root=0)
     signature = dolfin.MPI.comm_world.bcast(signature, root=0)
@@ -139,7 +144,7 @@ def load_problem(fname) -> SavedProblem:
         parameters=material_parameters,
     )
 
-    problem = Problem(
+    problem = cls(
         geometry=geometry,
         material=material,
         parameters=problem_parameters,
@@ -158,8 +163,8 @@ class DataCollector:
         self,
         path,
         problem: Problem,
-        pressure_parameters: Dict[str, float],
-        actvation_parameters: Dict[str, float],
+        pressure_parameters: Optional[Dict[str, Dict[str, float]]] = None,
+        actvation_parameters: Optional[Dict[str, float]] = None,
     ) -> None:
         self._path = Path(path)
         self._comm = dolfin.MPI.comm_world
@@ -175,7 +180,14 @@ class DataCollector:
         self.u = problem.u_old
         self.v = problem.v_old
         self.a = problem.a_old
-        self.p = problem.parameters["p"]
+        if isinstance(problem, LVProblem):
+            self.plv = problem.parameters["p"]
+            self._problem_is_biv = False
+        else:
+            self.plv = problem.parameters["plv"]
+            self.prv = problem.parameters["prv"]
+            self._problem_is_biv = True
+
         self.tau = problem.material.tau
 
         if problem.geometry.mesh is not None:
@@ -202,7 +214,10 @@ class DataCollector:
 
         if dolfin.MPI.rank(self._comm) == 0:
             with h5py.File(self.path, "a") as h5file:
-                h5file["p"].create_dataset(f"{t:.4f}", data=float(self.p))
+                h5file["plv"].create_dataset(f"{t:.4f}", data=float(self.plv))
+                if self._problem_is_biv:
+                    h5file["prv"].create_dataset(f"{t:.4f}", data=float(self.prv))
+
                 h5file["tau"].create_dataset(f"{t:.4f}", data=float(self.tau))
 
 
@@ -210,7 +225,6 @@ class DataLoader:
     def __init__(
         self,
         result_file: Union[str, Path],
-        outdir: Optional[Union[str, Path]] = None,
     ) -> None:
         self._h5file_py = None
         self._h5file = None
@@ -239,11 +253,12 @@ class DataLoader:
 
         if self.geometry.markers is None:
             raise RuntimeError("Cannot load markers")
+
         self.ds = dolfin.Measure(
             "exterior_facet",
             domain=mesh,
             subdomain_data=self.geometry.ffun,
-        )(self.geometry.markers["ENDO"][0])
+        )
 
         V = dolfin.FunctionSpace(mesh, self.signature)
         self.u = dolfin.Function(V, name="displacement")
@@ -288,6 +303,10 @@ class DataLoader:
     def geometry(self):
         return self.problem.geometry
 
+    @property
+    def geo_is_biv(self):
+        return isinstance(self.geometry, BiVGeometry)
+
     def _check_t(self, t):
         if not isinstance(t, str):
             t = f"{t:.4f}"
@@ -303,14 +322,19 @@ class DataLoader:
     def get_u_p_tau(self, t):
         self._check_t(t)
         self._h5file.read(self.u, f"u/{t}/")
-        p = []
+        plv = []
+        prv = []
         tau = []
         if dolfin.MPI.rank(self.comm) == 0:
-            p = self._h5file_py["p"][t][...].tolist()
+            plv = self._h5file_py["plv"][t][...].tolist()
+            if self.geo_is_biv:
+                prv = self._h5file_py["prv"][t][...].tolist()
+
             tau = self._h5file_py["tau"][t][...].tolist()
-        p = self.comm.bcast(p, root=0)
+        plv = self.comm.bcast(plv, root=0)
+        prv = self.comm.bcast(prv, root=0)
         tau = self.comm.bcast(tau, root=0)
-        return (self.u, p, tau)
+        return (self.u, plv, prv, tau)
 
     def get(self, t):
         self._check_t(t)
@@ -336,9 +360,13 @@ class DataLoader:
         return stress
 
     def von_Mises_stress_at_timepoint(self, t):
-        u, p, tau = self.get_u_p_tau(t)
+        u, plv, prv, tau = self.get_u_p_tau(t)
         self.problem.u.assign(u)
-        self.problem.parameters["p"] = p
+        if self.geo_is_biv:
+            self.problem.parameters["plv"] = plv
+            self.problem.parameters["prv"] = prv
+        else:
+            self.problem.parameters["p"] = plv
         self.problem.parameters["tau"] = tau
         return dolfin.project(self.problem.von_Mises(), self.stress_space)
 
@@ -372,16 +400,16 @@ class DataLoader:
         X1 = ufl.as_vector([0.0, X[1], 0.0])
         return (-1.0 / 1.0) * dolfin.dot(X1 + u1, ufl.cofac(F) * N)
 
-    def _volume_at_timepoint(self, u):
-        return dolfin.assemble(self._volume_form(u) * self.ds)
+    def _volume_at_timepoint(self, u, marker):
+        return dolfin.assemble(self._volume_form(u) * self.ds(marker))
 
-    def cavity_volume(self):
+    def cavity_volume(self, marker):
         print("Compute cavity volume...")
         vols = []
         for t in self.time_stamps:
             print(f"Volume at time {t}", end="\r")
             u = self.get_u(t)
-            vols.append(self._volume_at_timepoint(u))
+            vols.append(self._volume_at_timepoint(u, marker=marker))
         return np.array(vols)
 
     def compare_results(
@@ -419,6 +447,9 @@ class DataLoader:
         p1 = (0, 0.03, 0)
 
         vols = []
+        assert not self.geo_is_biv, "Comparison only for LV"
+        lv_marker = self.geometry.markers["ENDO"][0]
+
         up0 = []
         up1 = []
         for t in self.time_stamps_str:
@@ -427,7 +458,7 @@ class DataLoader:
 
             up0.append(u(p0))
             up1.append(u(p1))
-            vols.append(self._volume_at_timepoint(u))
+            vols.append(self._volume_at_timepoint(u, lv_marker))
 
         plot_componentwise_displacement_comparison(
             up0=np.array(up0),
@@ -465,7 +496,15 @@ class DataLoader:
         p0 = (0.025, 0.03, 0)
         p1 = (0, 0.03, 0)
 
-        vols = []
+        lv_vols = []
+        rv_vols = []
+        if self.geo_is_biv:
+            lv_marker = self.geometry.markers["ENDO_LV"][0]
+            rv_marker = self.geometry.markers["ENDO_RV"][0]
+        else:
+            lv_marker = self.geometry.markers["ENDO"][0]
+            rv_marker = None
+
         up0 = []
         up1 = []
         von_mises_p0 = []
@@ -483,7 +522,9 @@ class DataLoader:
 
             up0.append(u(p0))
             up1.append(u(p1))
-            vols.append(self._volume_at_timepoint(u))
+            lv_vols.append(self._volume_at_timepoint(u, marker=lv_marker))
+            if rv_marker is not None:
+                rv_vols.append(self._volume_at_timepoint(u, marker=rv_marker))
         u_xdmf.close()
         von_mises_xdmf.close()
 
@@ -500,7 +541,8 @@ class DataLoader:
             fname=outfolder / "von_Mises_stress.png",
         )
         plot_volume(
-            volumes=vols,
+            lv_volumes=lv_vols,
+            rv_volumes=rv_vols,
             time_stamps=self.time_stamps,
             fname=outfolder / "volume.png",
         )
@@ -714,19 +756,28 @@ def plot_componentwise_displacement_comparison(
     fig.savefig(fname, dpi=300)
 
 
-def plot_volume(volumes, time_stamps, fname="volume.png"):
+def plot_volume(lv_volumes, time_stamps, rv_volumes=None, fname="volume.png"):
+    if rv_volumes is None:
+        rv_volumes = []
     fname = Path(fname).with_suffix(".png")
     basefname = fname.with_suffix("").as_posix()
-    np.save(Path(basefname).with_suffix(".npy"), volumes)
+
+    volume_data = {"lv": lv_volumes, "time": time_stamps}
 
     fig, ax = plt.subplots()
-    ax.plot(time_stamps, volumes, label="volume")
+    ax.plot(time_stamps, lv_volumes, label="LV volume")
+    if len(rv_volumes) > 0:
+        volume_data["rv"] = rv_volumes
+        ax.plot(time_stamps, rv_volumes, label="RV volume")
+        ax.legend()
     ax.set_ylabel("Volume [m^3]")
     ax.set_xlabel("Time [s]")
     ax.grid()
-    ax.legend()
+
     ax.set_title("Volume throug time")
     fig.savefig(fname, dpi=300)
+
+    np.save(Path(basefname).with_suffix(".npy"), volume_data, allow_pickle=True)
 
 
 def plot_volume_comparison(
@@ -758,7 +809,13 @@ def plot_volume_comparison(
     fig.savefig(fname, dpi=300)
 
 
-def plot_activation_pressure_function(t, activation, pressure, outdir):
+def plot_activation_pressure_function(
+    outdir,
+    t,
+    activation,
+    lv_pressure,
+    rv_pressure=None,
+):
     fig, ax = plt.subplots()
     ax.plot(t, activation)
     ax.set_title("Activation fuction \u03C4(t)")
@@ -767,7 +824,10 @@ def plot_activation_pressure_function(t, activation, pressure, outdir):
     fig.savefig(Path(outdir) / "activation_function.png")
 
     fig, ax = plt.subplots()
-    ax.plot(t, pressure)
+    ax.plot(t, lv_pressure, label="LV")
+    if rv_pressure is not None:
+        ax.plot(t, rv_pressure, label="RV")
+        ax.legend()
     ax.set_title("Pressure fuction p(t)")
     ax.set_ylabel("Pressure [Pa]")
     ax.set_xlabel("Time [s]")

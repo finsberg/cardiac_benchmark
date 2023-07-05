@@ -6,6 +6,8 @@ except ImportError:
     import importlib_metadata as importlib_metadata  # type: ignore
 
 from . import benchmark1
+from . import benchmark2
+from . import utils
 from . import cli
 from . import geometry
 from . import material
@@ -27,6 +29,8 @@ __program_name__ = meta["Name"]
 
 __all__ = [
     "benchmark1",
+    "benchmark2",
+    "utils",
     "cli",
     "geometry",
     "material",

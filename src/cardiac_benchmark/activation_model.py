@@ -1,45 +1,11 @@
 import math
 import pprint
-from enum import Enum
-from pathlib import Path
 from typing import Dict
-from typing import NamedTuple
 from typing import Optional
 from typing import Tuple
-from typing import Union
 
 import numpy as np
 import scipy.integrate
-
-
-class Pressure(str, Enum):
-    bestel = "bestel"
-    zero_pressure = "zero_pressure"
-    zero_active = "zero_active"
-
-
-class PressureActivationSolution(NamedTuple):
-    time: np.ndarray
-    state: np.ndarray
-    parameters: Dict[str, float]
-
-    @property
-    def act(self) -> np.ndarray:
-        return self.state[0, :]
-
-    @property
-    def pressure(self) -> np.ndarray:
-        return self.state[1, :]
-
-    def save(self, fname: Union[Path, str]) -> None:
-        np.save(
-            fname,
-            {
-                "time": self.time,
-                "state": self.state,
-                "parameters": self.parameters,
-            },
-        )
 
 
 def default_parameters():

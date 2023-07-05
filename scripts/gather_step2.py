@@ -1,7 +1,8 @@
 import json
-import numpy as np
 import shutil
 from pathlib import Path
+
+import numpy as np
 
 # import cardiac_benchmark
 # import matplotlib.pyplot as plt
