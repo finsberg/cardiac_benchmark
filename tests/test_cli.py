@@ -1,5 +1,6 @@
 import shutil
 from pathlib import Path
+from unittest.mock import patch
 
 import numpy as np
 import pytest
@@ -107,19 +108,22 @@ def test_benchmark2():
     assert res_download.exit_code == 0
 
     outdir = Path.cwd() / "test_results_benchmark2"
-
-    result = runner.invoke(
-        app,
-        [
-            "benchmark2",
-            data_folder.as_posix(),
-            "--outdir",
-            outdir.as_posix(),
-            "--t",
-            0.05,
-        ],
-    )
+    # Let us mock out the actual solving to speed it up
+    with patch("cardiac_benchmark.solver.NonlinearSolver.solve") as mock_solve:
+        mock_solve.return_value = (0, True)
+        result = runner.invoke(
+            app,
+            [
+                "benchmark2",
+                data_folder.as_posix(),
+                "--outdir",
+                outdir.as_posix(),
+                "--t",
+                0.05,
+            ],
+        )
 
     assert result.exit_code == 0
+
     assert (outdir / "result.h5").is_file()
     assert (outdir / "von_Mises_stress_sp1.npy").is_file()
