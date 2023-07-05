@@ -495,6 +495,8 @@ class DataLoader:
         s = dolfin.Function(self.stress_space)
         p0 = (0.025, 0.03, 0)
         p1 = (0, 0.03, 0)
+        # Only for benchmark 2
+        p2 = (0.025, 0, 0.07)
 
         lv_vols = []
         rv_vols = []
@@ -507,8 +509,10 @@ class DataLoader:
 
         up0 = []
         up1 = []
+        up2: List[float] = []
         von_mises_p0 = []
         von_mises_p1 = []
+        von_mises_p2: List[float] = []
         for t in self.time_stamps_str:
             print(f"Time {t}", end="\r")
             u = self.get_u(t)
@@ -522,6 +526,11 @@ class DataLoader:
 
             up0.append(u(p0))
             up1.append(u(p1))
+
+            if self.geo_is_biv:
+                up2.append(u(p2))
+                von_mises_p2.append(s(p2))
+
             lv_vols.append(self._volume_at_timepoint(u, marker=lv_marker))
             if rv_marker is not None:
                 rv_vols.append(self._volume_at_timepoint(u, marker=rv_marker))
@@ -531,12 +540,14 @@ class DataLoader:
         plot_componentwise_displacement(
             up0=np.array(up0),
             up1=np.array(up1),
+            up2=np.array(up2),
             time_stamps=self.time_stamps,
             fname=outfolder / "componentwise_displacement.png",
         )
         plot_von_Mises_stress(
-            von_mises_p0,
-            von_mises_p1,
+            sp0=np.array(von_mises_p0),
+            sp1=np.array(von_mises_p1),
+            sp2=np.array(von_mises_p2),
             time_stamps=self.time_stamps,
             fname=outfolder / "von_Mises_stress.png",
         )
@@ -576,18 +587,25 @@ def load_true_volume_data(vol_path: Union[str, Path]) -> np.ndarray:
 
 
 def plot_componentwise_displacement(
-    up0,
-    up1,
-    time_stamps,
+    up0: np.ndarray,
+    up1: np.ndarray,
+    time_stamps: np.ndarray,
+    up2: Optional[np.ndarray] = None,
     fname="componentwise_displacement.png",
 ):
+    if up2 is None:
+        up2 = np.array([])
     fname = Path(fname).with_suffix(".png")
+
+    N = 3 if len(up2) > 0 else 2
 
     basefname = fname.with_suffix("").as_posix()
     np.save(Path(basefname + "_up0").with_suffix(".npy"), up0)
     np.save(Path(basefname + "_up1").with_suffix(".npy"), up1)
+    if N == 3:
+        np.save(Path(basefname + "_up2").with_suffix(".npy"), up2)
 
-    fig, ax = plt.subplots(2, 1, sharex=True)
+    fig, ax = plt.subplots(N, 1, sharex=True)
     ax[0].plot(time_stamps, up0[:, 0], label="x")
     ax[0].plot(time_stamps, up0[:, 1], label="y")
     ax[0].plot(time_stamps, up0[:, 2], label="z")
@@ -599,6 +617,13 @@ def plot_componentwise_displacement(
     ax[1].set_ylabel("$u(p_1)$[m]")
     ax[1].set_xlabel("Time [s]")
 
+    if N == 3:
+        ax[2].plot(time_stamps, up2[:, 0], label="x")
+        ax[2].plot(time_stamps, up2[:, 1], label="y")
+        ax[2].plot(time_stamps, up2[:, 2], label="z")
+        ax[2].set_ylabel("$u(p_2)$[m]")
+        ax[2].set_xlabel("Time [s]")
+
     for axi in ax:
         axi.legend()
         axi.grid()
@@ -606,11 +631,15 @@ def plot_componentwise_displacement(
 
 
 def plot_von_Mises_stress(
-    sp0,
-    sp1,
-    time_stamps,
+    sp0: np.ndarray,
+    sp1: np.ndarray,
+    time_stamps: np.ndarray,
+    sp2: Optional[np.ndarray] = None,
     fname="von_Mises_stress.png",
 ):
+    if sp2 is None:
+        sp2 = np.array([])
+
     fname = Path(fname).with_suffix(".png")
 
     basefname = fname.with_suffix("").as_posix()
@@ -620,6 +649,9 @@ def plot_von_Mises_stress(
     fig, ax = plt.subplots()
     ax.plot(time_stamps, sp0, label=r"$\sigma_v(p_0)$")
     ax.plot(time_stamps, sp1, label=r"$\sigma_v(p_1)$")
+    if len(sp2) > 0:
+        np.save(Path(basefname + "_sp2").with_suffix(".npy"), sp2)
+        ax.plot(time_stamps, sp2, label=r"$\sigma_v(p_2)$")
     ax.set_ylabel("von Mises stress [Pa]")
     ax.set_xlabel("Time [s]")
     ax.legend()
