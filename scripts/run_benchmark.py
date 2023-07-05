@@ -31,6 +31,18 @@ def run_step2(dry_run: bool = False):
             sp.run(["sbatch", (here / "step2.sbatch").as_posix(), str(i)])
 
 
+def run_benchmark2_coarse(dry_run: bool = False):
+    print("Run benchmark 2 (coarse)")
+    if not dry_run:
+        sp.run(["sbatch", (here / "benchmark2_coarse.sbatch").as_posix()])
+
+
+def run_benchmark2_fine(dry_run: bool = False):
+    print("Run benchmark 2 (fine)")
+    if not dry_run:
+        sp.run(["sbatch", (here / "benchmark2_fine.sbatch").as_posix()])
+
+
 def main(args):
 
     (Path.cwd() / "slurm-output").mkdir(exist_ok=True)
@@ -42,6 +54,10 @@ def main(args):
         run_step1(dry_run="--dry-run" in args)
     if "step2" in args or "all" in args:
         run_step2(dry_run="--dry-run" in args)
+    if "benchmark2-coarse" in args or "all" in args:
+        run_benchmark2_coarse(dry_run="--dry-run" in args)
+    if "benchmark2-fine" in args or "all" in args:
+        run_benchmark2_fine(dry_run="--dry-run" in args)
 
 
 if __name__ == "__main__":

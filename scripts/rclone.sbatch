@@ -29,4 +29,4 @@
 # module load python-fenics-dolfin-2019.1.0.post0
 
 
-rclone copy --progress /global/D1/homes/${USER}/cardiac_benchmark dropbox:cardiac_benchmark_results
+rclone copy --progress /global/D1/homes/${USER}/cardiac_benchmark/ dropbox:cardiac_benchmark_results/
