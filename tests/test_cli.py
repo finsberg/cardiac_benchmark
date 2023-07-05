@@ -95,3 +95,31 @@ def test_benchmark1_step2_case1(geo_path):
         max_up0=(0.00029864, 0.00152623, 0.0012752),
         min_up0=(-2.01299237e-02, -4.59802750e-06, -3.08946192e-04),
     )
+
+
+def test_benchmark2():
+    runner = CliRunner(mix_stderr=False)
+    data_folder = Path.cwd() / "coarse_data"
+    res_download = runner.invoke(
+        app,
+        ["download-data-benchmark2", "coarse", "--outdir", data_folder.as_posix()],
+    )
+    assert res_download.exit_code == 0
+
+    outdir = Path.cwd() / "test_results_benchmark2"
+
+    result = runner.invoke(
+        app,
+        [
+            "benchmark2",
+            data_folder.as_posix(),
+            "--outdir",
+            outdir.as_posix(),
+            "--t",
+            0.05,
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert (outdir / "result.h5").is_file()
+    assert (outdir / "von_Mises_stress_sp1.npy").is_file()

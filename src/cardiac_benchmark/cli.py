@@ -286,6 +286,7 @@ def benchmark2(
     alpha_f: float = 0.4,
     function_space: str = "P_2",
     loglevel: int = logging.INFO,
+    T: float = 1.0,
 ) -> int:
     setup_logging(loglevel=loglevel)
     if outdir is not None:
@@ -331,6 +332,7 @@ def benchmark2(
             fiber_file=fiber_file,
             sheet_file=sheet_file,
             sheet_normal_file=sheet_normal_file,
+            T=T,
             **params,
         )
 

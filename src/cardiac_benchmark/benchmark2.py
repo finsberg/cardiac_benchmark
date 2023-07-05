@@ -70,6 +70,7 @@ def run(
     material_parameters: Optional[Dict[str, Union[float, dolfin.Constant]]] = None,
     problem_parameters: Optional[Dict[str, Union[float, dolfin.Constant]]] = None,
     outpath: Union[str, Path] = "results_benchmark2.h5",
+    T: float = 1.0,
 ):
     outdir = Path(outpath).parent
     outdir.mkdir(parents=True, exist_ok=True)
@@ -104,21 +105,21 @@ def run(
 
     dt = float(problem_parameters["dt"])
     tau = dolfin.Constant(0.0)
-    time = np.arange(dt, 1, dt)
+    time = np.arange(dt, T, dt)
 
     t_eval = time - float(problem_parameters["alpha_f"]) * dt
     lv_pressure = pressure_model.pressure_function(
-        (0, 1),
+        (0, T),
         t_eval=t_eval,
         parameters=lv_pressure_parameters,
     )
     rv_pressure = pressure_model.pressure_function(
-        (0, 1),
+        (0, T),
         t_eval=t_eval,
         parameters=rv_pressure_parameters,
     )
     activation = activation_model.activation_function(
-        (0, 1),
+        (0, T),
         t_eval=t_eval,
         parameters=activation_parameters,
     )
