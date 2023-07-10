@@ -61,7 +61,7 @@ def _benchmark_1(
 def test_benchmark1_step0_caseA(geo_path):
     _benchmark_1(
         "benchmark1_step0_caseA",
-        ["benchmark1-step0-case-a"],
+        ["benchmark1-step0", "a"],
         geo_path,
         max_up0=(0.0, 0.00113854, 0.00121422),
         min_up0=(-2.11865732e-02, -7.07775436e-06, -3.90594965e-04),
@@ -71,7 +71,7 @@ def test_benchmark1_step0_caseA(geo_path):
 def test_benchmark1_step0_caseB(geo_path):
     _benchmark_1(
         "benchmark1_step0_caseB",
-        ["benchmark1-step0-case-b"],
+        ["benchmark1-step0", "b"],
         geo_path,
         max_up0=(9.56321066e-03, 4.23419184e-05, 1.52382853e-04),
         min_up0=(6.58201731e-08, -2.48506144e-04, -1.50213958e-08),

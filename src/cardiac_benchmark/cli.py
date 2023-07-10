@@ -11,7 +11,6 @@ from typing import Union
 import dolfin
 import typer
 
-from . import step2 as _step2
 from .geometry import LVGeometry
 from .postprocess import DataLoader
 from .utils import ConstantEncoder
@@ -24,6 +23,17 @@ logger = logging.getLogger(__name__)
 class Resolution(str, Enum):
     fine = "fine"
     coarse = "coarse"
+
+
+class Step0Case(str, Enum):
+    a = "a"
+    b = "b"
+
+
+class Step2Case(str, Enum):
+    a = "a"
+    b = "b"
+    c = "c"
 
 
 def setup_logging(loglevel):
@@ -109,10 +119,6 @@ def benchmark1_step_0_1(
     from . import benchmark1
 
     params = benchmark1.default_parameters()
-    if case == 2:
-        assert isinstance(case, int), "Case must be an integer for step 2"
-        assert 1 <= case <= 16, "Case must be a number between 1 and 16"
-        params.update(_step2.cases[case - 1])
 
     params["problem_parameters"]["alpha_m"] = alpha_m
     params["problem_parameters"]["alpha_f"] = alpha_f
@@ -130,7 +136,7 @@ def benchmark1_step_0_1(
     parameters["timestamp"] = datetime.datetime.now().isoformat()
 
     logger.info(
-        f"Running benchmakr 1 step {step}, "
+        f"Running benchmark 1 step {step}, "
         f"case {case} with parameters {pprint.pformat(parameters)}",
     )
     if dolfin.MPI.rank(dolfin.MPI.comm_world) == 0:
@@ -149,8 +155,9 @@ def benchmark1_step_0_1(
     return 0
 
 
-@app.command(help="Run benchmark 1 - step 0 - case A")
-def benchmark1_step0_case_A(
+@app.command(help="Run benchmark 1 - step 0")
+def benchmark1_step0(
+    case: Step0Case,
     outdir: Optional[Path] = typer.Option(None),
     run_benchmark: bool = True,
     run_postprocess: bool = True,
@@ -162,6 +169,16 @@ def benchmark1_step0_case_A(
 ) -> int:
     if outdir is None:
         outdir = Path("results_benchmark1_step0_caseA")
+
+    if Step0Case[case] == Step0Case.a:
+        zero_pressure = True
+        zero_activation = False
+    elif Step0Case[case] == Step0Case.b:
+        zero_activation = True
+        zero_pressure = False
+    else:
+        raise ValueError(f"Invalid case {case} for step 0")
+
     return benchmark1_step_0_1(
         step=0,
         case="A",
@@ -170,36 +187,8 @@ def benchmark1_step0_case_A(
         run_postprocess=run_postprocess,
         alpha_m=alpha_m,
         alpha_f=alpha_f,
-        zero_pressure=True,
-        geometry_path=geometry_path,
-        function_space=function_space,
-        loglevel=loglevel,
-    )
-
-
-@app.command(help="Run benchmark 1 - step 0 - case B")
-def benchmark1_step0_case_B(
-    outdir: Optional[Path] = typer.Option(None),
-    run_benchmark: bool = True,
-    run_postprocess: bool = True,
-    alpha_m: float = 0.2,
-    alpha_f: float = 0.4,
-    geometry_path: Optional[Path] = typer.Option(None),
-    function_space: str = "P_2",
-    loglevel: int = logging.INFO,
-) -> int:
-    if outdir is None:
-        outdir = Path("results_benchmark1_step0_caseB")
-    return benchmark1_step_0_1(
-        step=0,
-        case="B",
-        outdir=outdir,
-        run_benchmark=run_benchmark,
-        run_postprocess=run_postprocess,
-        alpha_m=alpha_m,
-        alpha_f=alpha_f,
-        zero_activation=True,
-        zero_pressure=False,
+        zero_pressure=zero_pressure,
+        zero_activation=zero_activation,
         geometry_path=geometry_path,
         function_space=function_space,
         loglevel=loglevel,
@@ -238,7 +227,7 @@ def benchmark1_step1(
 
 @app.command(help="Run benchmark 1 - step 2")
 def benchmark1_step2(
-    case: int,
+    case: str,
     outdir: Optional[Path] = typer.Option(None),
     run_benchmark: bool = True,
     run_postprocess: bool = True,
