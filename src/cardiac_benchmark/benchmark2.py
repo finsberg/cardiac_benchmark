@@ -153,7 +153,7 @@ def run(
 
     material = HolzapfelOgden(
         f0=geo.f0,
-        n0=geo.n0,
+        s0=geo.s0,
         tau=tau,
         parameters=material_parameters,
     )

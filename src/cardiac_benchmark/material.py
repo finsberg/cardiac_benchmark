@@ -35,7 +35,7 @@ class HolzapfelOgden:
     ----------
     f0: dolfin.Function
         Function representing the direction of the fibers
-    n0: dolfin.Function
+    s0: dolfin.Function
         Function representing the direction of the sheets
     tau: dolfin.Constant
         The active stress
@@ -85,7 +85,7 @@ class HolzapfelOgden:
     def __init__(
         self,
         f0: dolfin.Function,
-        n0: dolfin.Function,
+        s0: dolfin.Function,
         tau: dolfin.Constant = dolfin.Constant(0.0),
         parameters: typing.Optional[typing.Dict[str, dolfin.Constant]] = None,
     ) -> None:
@@ -94,7 +94,7 @@ class HolzapfelOgden:
         self.parameters.update(parameters)
 
         self.f0 = f0
-        self.n0 = n0
+        self.s0 = s0
         self.tau = tau
 
     @staticmethod
@@ -104,10 +104,10 @@ class HolzapfelOgden:
             "b": dolfin.Constant(8.023),
             "a_f": dolfin.Constant(18472.0),
             "b_f": dolfin.Constant(16.026),
-            "a_n": dolfin.Constant(2481.0),
-            "b_n": dolfin.Constant(11.120),
-            "a_fn": dolfin.Constant(216.0),
-            "b_fn": dolfin.Constant(11.436),
+            "a_s": dolfin.Constant(2481.0),
+            "b_s": dolfin.Constant(11.120),
+            "a_fs": dolfin.Constant(216.0),
+            "b_fs": dolfin.Constant(11.436),
             "kappa": dolfin.Constant(1e6),
             "eta": dolfin.Constant(1e2),
             "k": dolfin.Constant(100.0),
@@ -120,7 +120,7 @@ class HolzapfelOgden:
         return a / (2.0 * b) * (dolfin.exp(b * (I1 - 3)) - 1.0)
 
     def W_4(self, I4, direction):
-        assert direction in ["f", "n"]
+        assert direction in ["f", "s"]
         a = self.parameters[f"a_{direction}"]
         b = self.parameters[f"b_{direction}"]
 
@@ -135,8 +135,8 @@ class HolzapfelOgden:
         """
         Cross fiber-sheet contribution.
         """
-        a = self.parameters["a_fn"]
-        b = self.parameters["b_fn"]
+        a = self.parameters["a_fs"]
+        b = self.parameters["b_fs"]
 
         return a / (2.0 * b) * (dolfin.exp(b * I8**2) - 1.0)
 
@@ -163,8 +163,8 @@ class HolzapfelOgden:
         C = F.T * F
         I1 = pow(J, -2 / 3) * dolfin.tr(C)
         I4f = dolfin.inner(F * self.f0, F * self.f0)
-        I4n = dolfin.inner(F * self.n0, F * self.n0)
-        I8fn = dolfin.inner(F * self.f0, F * self.n0)
+        I4s = dolfin.inner(F * self.s0, F * self.s0)
+        I8fs = dolfin.inner(F * self.f0, F * self.s0)
 
         # Compressibility
         Wcompress = self.W_compress(J)
@@ -174,8 +174,8 @@ class HolzapfelOgden:
 
         W1 = self.W_1(I1)
         W4f = self.W_4(I4f, "f")
-        W4n = self.W_4(I4n, "n")
-        W8fn = self.W_8(I8fn)
+        W4s = self.W_4(I4s, "s")
+        W8fs = self.W_8(I8fs)
 
-        W = W1 + W4f + W4n + W8fn + Wcompress + Wactive
+        W = W1 + W4f + W4s + W8fs + Wcompress + Wactive
         return W

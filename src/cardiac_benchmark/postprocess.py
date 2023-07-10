@@ -139,7 +139,7 @@ def load_problem(fname) -> SavedProblem:
     tau = dolfin.Constant(0.0)
     material = HolzapfelOgden(
         f0=geometry.f0,
-        n0=geometry.n0,
+        s0=geometry.s0,
         tau=tau,
         parameters=material_parameters,
     )
