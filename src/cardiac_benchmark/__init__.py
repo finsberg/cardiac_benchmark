@@ -17,7 +17,6 @@ from . import pressure_model
 from . import activation_model
 from . import problem
 from . import solver
-from . import step2
 
 meta = importlib_metadata.metadata("cardiac-benchmark")
 __version__ = meta["Version"]
@@ -39,6 +38,5 @@ __all__ = [
     "pressure_model",
     "problem",
     "solver",
-    "step2",
     "activation_model",
 ]

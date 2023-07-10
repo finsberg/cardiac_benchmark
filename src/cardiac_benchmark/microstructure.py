@@ -29,7 +29,6 @@ def laplace(
     markers: Dict[str, Tuple[int, int]],
     function_space: str,
 ):
-
     endo_marker = markers["ENDO"][0]
     epi_marker = markers["EPI"][0]
 
@@ -79,7 +78,6 @@ def compute_system(
     alpha_epi: float = 60,
     **kwargs,
 ):
-
     V = t_func.function_space()
     element = V.ufl_element()
     mesh = V.mesh()
@@ -139,11 +137,11 @@ def compute_system(
     f0 = np.sin(al) * e_mu + np.cos(al) * e_theta
     f0 = normalize(f0)
 
-    s0 = np.cross(e_mu, e_theta, axis=0)
-    s0 = normalize(s0)
-
-    n0 = np.cross(f0, s0, axis=0)
+    n0 = np.cross(e_mu, e_theta, axis=0)
     n0 = normalize(n0)
+
+    s0 = np.cross(f0, n0, axis=0)
+    s0 = normalize(s0)
 
     Vv = dolfin.FunctionSpace(
         mesh,

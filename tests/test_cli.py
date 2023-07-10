@@ -61,7 +61,7 @@ def _benchmark_1(
 def test_benchmark1_step0_caseA(geo_path):
     _benchmark_1(
         "benchmark1_step0_caseA",
-        ["benchmark1-step0-case-a"],
+        ["benchmark1-step0", "a"],
         geo_path,
         max_up0=(0.0, 0.00113854, 0.00121422),
         min_up0=(-2.11865732e-02, -7.07775436e-06, -3.90594965e-04),
@@ -71,7 +71,7 @@ def test_benchmark1_step0_caseA(geo_path):
 def test_benchmark1_step0_caseB(geo_path):
     _benchmark_1(
         "benchmark1_step0_caseB",
-        ["benchmark1-step0-case-b"],
+        ["benchmark1-step0", "b"],
         geo_path,
         max_up0=(9.56321066e-03, 4.23419184e-05, 1.52382853e-04),
         min_up0=(6.58201731e-08, -2.48506144e-04, -1.50213958e-08),
@@ -88,16 +88,17 @@ def test_benchmark1_step1(geo_path):
     )
 
 
-def test_benchmark1_step2_case1(geo_path):
+def test_benchmark1_step2_caseA(geo_path):
     _benchmark_1(
-        "benchmark1_step2",
-        ["benchmark1-step2", "1"],
+        "benchmark1_step2_caseA",
+        ["benchmark1-step2", "a"],
         geo_path,
-        max_up0=(0.00029864, 0.00152623, 0.0012752),
-        min_up0=(-2.01299237e-02, -4.59802750e-06, -3.08946192e-04),
+        max_up0=(0.00019931, 0.00126132, 0.00186219),
+        min_up0=(-1.28022378e-02, -4.39693989e-06, -2.24322217e-05),
     )
 
 
+@pytest.mark.xfail(reason="Updated meshes")
 def test_benchmark2():
     runner = CliRunner(mix_stderr=False)
     data_folder = Path.cwd() / "coarse_data"

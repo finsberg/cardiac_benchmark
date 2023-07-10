@@ -70,22 +70,29 @@ which by default will run benchmark 1 - step 1.
     ```
     cardiac-benchmark create-geometry geometry.h5
     ```
-
 - Run benchmark 1 step 0 case A
     ```
-    cardiac-benchmark benchmark1-step0-case-a
+    cardiac-benchmark benchmark1-step0 a
     ```
 - Run benchmark 1 step 0 case B
     ```
-    cardiac-benchmark benchmark1-step0-case-b
+    cardiac-benchmark benchmark1-step0 b
     ```
 - Run benchmark 1 step 1
     ```
     cardiac-benchmark benchmark1-step1
     ```
-- Run benchmark 1 step 2 case N (replace N with an integer between 1 and 16)
+- Run benchmark 1 step 2 case A
     ```
-    cardiac-benchmark benchmark1-step2 <N>
+    cardiac-benchmark benchmark1-step2 a
+    ```
+- Run benchmark 1 step 2 case B
+    ```
+    cardiac-benchmark benchmark1-step2 b
+    ```
+- Run benchmark 1 step 2 case C
+    ```
+    cardiac-benchmark benchmark1-step2 c
     ```
 - Download coarse data for benchmark 2 to a folder called `data_coarse`
     ```

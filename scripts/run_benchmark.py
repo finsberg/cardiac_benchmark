@@ -5,16 +5,12 @@ from pathlib import Path
 here = Path(__file__).parent.absolute()
 
 
-def run_step0_caseA(dry_run: bool = False):
-    print("Run step 0 case A")
-    if not dry_run:
-        sp.run(["sbatch", (here / "step0-casea.sbatch").as_posix()])
-
-
-def run_step0_caseB(dry_run: bool = False):
-    print("Run step 0 case B")
-    if not dry_run:
-        sp.run(["sbatch", (here / "step0-caseb.sbatch").as_posix()])
+def run_step0(dry_run: bool = False):
+    print("Run step 0")
+    for case in ["a", "b"]:
+        print(f"Case {case}")
+        if not dry_run:
+            sp.run(["sbatch", (here / "step0.sbatch").as_posix(), case])
 
 
 def run_step1(dry_run: bool = False):
@@ -25,10 +21,10 @@ def run_step1(dry_run: bool = False):
 
 def run_step2(dry_run: bool = False):
     print("Run step 2")
-    for i in range(1, 17):
-        print(f"Case {i}")
+    for case in ["a", "b", "c"]:
+        print(f"Case {case}")
         if not dry_run:
-            sp.run(["sbatch", (here / "step2.sbatch").as_posix(), str(i)])
+            sp.run(["sbatch", (here / "step2.sbatch").as_posix(), case])
 
 
 def run_benchmark2_coarse(dry_run: bool = False):
@@ -44,12 +40,9 @@ def run_benchmark2_fine(dry_run: bool = False):
 
 
 def main(args):
-
     (Path.cwd() / "slurm-output").mkdir(exist_ok=True)
-    if "step0-case-a" in args or "all" in args:
-        run_step0_caseA(dry_run="--dry-run" in args)
-    if "step0-case-b" in args or "all" in args:
-        run_step0_caseB(dry_run="--dry-run" in args)
+    if "step0" in args or "all" in args:
+        run_step0(dry_run="--dry-run" in args)
     if "step1" in args or "all" in args:
         run_step1(dry_run="--dry-run" in args)
     if "step2" in args or "all" in args:
