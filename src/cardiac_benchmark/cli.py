@@ -103,6 +103,10 @@ def benchmark1_step_0_1(
     function_space: str = "P_2",
     loglevel: int = logging.INFO,
     a: float = 59.0,
+    a_f: float = 18472.0,
+    a_fs: float = 216.0,
+    a_s: float = 2481.0,
+    sigma_0: float = 1.0,
 ) -> int:
     setup_logging(loglevel=loglevel)
     if outdir is not None:
@@ -123,6 +127,14 @@ def benchmark1_step_0_1(
     params["problem_parameters"]["alpha_m"] = alpha_m
     params["problem_parameters"]["alpha_f"] = alpha_f
     params["problem_parameters"]["function_space"] = function_space
+
+    params["material_parameters"]["a"] = a
+    params["material_parameters"]["a_f"] = a_f
+    params["material_parameters"]["a_fs"] = a_fs
+    params["material_parameters"]["a_s"] = a_s
+
+    params["activation_parameters"]["sigma_0"] = sigma_0
+
     params["zero_pressure"] = zero_pressure
     params["zero_activation"] = zero_activation
     params["outpath"] = outpath.as_posix()
@@ -177,7 +189,7 @@ def benchmark1_step0(
         zero_activation = True
         zero_pressure = False
     else:
-        raise ValueError(f"Invalid case {case} for step 0")
+        raise ValueError(f"Invalid case {Step0Case[case].name} for step 0")
 
     return benchmark1_step_0_1(
         step=0,
@@ -227,7 +239,7 @@ def benchmark1_step1(
 
 @app.command(help="Run benchmark 1 - step 2")
 def benchmark1_step2(
-    case: str,
+    case: Step2Case,
     outdir: Optional[Path] = typer.Option(None),
     run_benchmark: bool = True,
     run_postprocess: bool = True,
@@ -238,7 +250,29 @@ def benchmark1_step2(
     loglevel: int = logging.INFO,
 ) -> int:
     if outdir is None:
-        outdir = Path(f"results_benchmark1_step2/case{case}")
+        outdir = Path(f"results_benchmark1_step2/case{Step2Case[case].name}")
+
+    if Step2Case[case] == Step2Case.a:
+        a = 177.0
+        a_f = 55416.0
+        a_fs = 648.0
+        a_s = 7443.0
+        sigma_0 = 2e5
+    elif Step2Case[case] == Step2Case.b:
+        a = 295.0
+        a_f = 92360.0
+        a_fs = 1080.0
+        a_s = 12405.0
+        sigma_0 = 1e5
+    elif Step2Case[case] == Step2Case.c:
+        a = 19.0
+        a_f = 6157.0
+        a_fs = 72.0
+        a_s = 827.0
+        sigma_0 = 2e5
+    else:
+        raise ValueError(f"Invalid case {Step2Case[case].name} for step 2")
+
     return benchmark1_step_0_1(
         step=2,
         case=case,
@@ -247,11 +281,14 @@ def benchmark1_step2(
         run_postprocess=run_postprocess,
         alpha_m=alpha_m,
         alpha_f=alpha_f,
-        zero_activation=False,
-        zero_pressure=False,
         geometry_path=geometry_path,
         function_space=function_space,
         loglevel=loglevel,
+        a=a,
+        a_f=a_f,
+        a_fs=a_fs,
+        a_s=a_s,
+        sigma_0=sigma_0,
     )
 
 
