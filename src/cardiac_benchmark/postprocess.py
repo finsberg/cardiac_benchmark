@@ -134,6 +134,7 @@ def load_problem(fname) -> SavedProblem:
     time_stamps_str = dolfin.MPI.comm_world.bcast(time_stamps_str, root=0)
     problem_parameters = dolfin.MPI.comm_world.bcast(problem_parameters, root=0)
     problem_parameters["function_space"] = f"{signature.family()}_{signature.degree()}"
+    cls = dolfin.MPI.comm_world.bcast(cls, root=0)
     geometry = load_geometry(path)
 
     tau = dolfin.Constant(0.0)
