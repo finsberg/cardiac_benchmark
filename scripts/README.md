@@ -13,14 +13,9 @@ Note that this requires `fenics` and `gmsh` to be be installed. To get this you 
 
 ## Submit benchmark
 
-Step 0 Case A
+Step 0 (case A + B)
 ```
-python run_benchmark.py step0-case-a
-```
-
-Step 0 Case B
-```
-python run_benchmark.py step0-case-b
+python run_benchmark.py step0
 ```
 
 Step 1
@@ -28,9 +23,9 @@ Step 1
 python run_benchmark.py step1
 ```
 
-Step 2
+Step 2 (case A + B + C)
 ```
-python run_benchmark.py step1
+python run_benchmark.py step2
 ```
 
 Run all benchmarks
