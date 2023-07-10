@@ -85,7 +85,6 @@ def benchmark1_step_0_1(
     outdir: Optional[Path] = typer.Option(None),
     run_benchmark: bool = True,
     run_postprocess: bool = True,
-    run_comparison: bool = False,
     alpha_m: float = 0.2,
     alpha_f: float = 0.4,
     zero_pressure: bool = False,
@@ -93,6 +92,7 @@ def benchmark1_step_0_1(
     geometry_path: Optional[Path] = typer.Option(None),
     function_space: str = "P_2",
     loglevel: int = logging.INFO,
+    a: float = 59.0,
 ) -> int:
     setup_logging(loglevel=loglevel)
     if outdir is not None:
@@ -146,9 +146,6 @@ def benchmark1_step_0_1(
     if run_postprocess:
         loader.postprocess_all(folder=outdir)
 
-    if run_comparison:
-        loader.compare_results(folder=outdir)
-
     return 0
 
 
@@ -157,7 +154,6 @@ def benchmark1_step0_case_A(
     outdir: Optional[Path] = typer.Option(None),
     run_benchmark: bool = True,
     run_postprocess: bool = True,
-    run_comparison: bool = False,
     alpha_m: float = 0.2,
     alpha_f: float = 0.4,
     geometry_path: Optional[Path] = typer.Option(None),
@@ -172,7 +168,6 @@ def benchmark1_step0_case_A(
         outdir=outdir,
         run_benchmark=run_benchmark,
         run_postprocess=run_postprocess,
-        run_comparison=run_comparison,
         alpha_m=alpha_m,
         alpha_f=alpha_f,
         zero_pressure=True,
@@ -187,7 +182,6 @@ def benchmark1_step0_case_B(
     outdir: Optional[Path] = typer.Option(None),
     run_benchmark: bool = True,
     run_postprocess: bool = True,
-    run_comparison: bool = False,
     alpha_m: float = 0.2,
     alpha_f: float = 0.4,
     geometry_path: Optional[Path] = typer.Option(None),
@@ -202,7 +196,6 @@ def benchmark1_step0_case_B(
         outdir=outdir,
         run_benchmark=run_benchmark,
         run_postprocess=run_postprocess,
-        run_comparison=run_comparison,
         alpha_m=alpha_m,
         alpha_f=alpha_f,
         zero_activation=True,
@@ -218,7 +211,6 @@ def benchmark1_step1(
     outdir: Optional[Path] = typer.Option(None),
     run_benchmark: bool = True,
     run_postprocess: bool = True,
-    run_comparison: bool = False,
     alpha_m: float = 0.2,
     alpha_f: float = 0.4,
     geometry_path: Optional[Path] = typer.Option(None),
@@ -232,7 +224,6 @@ def benchmark1_step1(
         outdir=outdir,
         run_benchmark=run_benchmark,
         run_postprocess=run_postprocess,
-        run_comparison=run_comparison,
         alpha_m=alpha_m,
         alpha_f=alpha_f,
         zero_activation=False,
@@ -265,7 +256,6 @@ def benchmark1_step2(
         outdir=outdir,
         run_benchmark=run_benchmark,
         run_postprocess=run_postprocess,
-        run_comparison=False,
         alpha_m=alpha_m,
         alpha_f=alpha_f,
         zero_activation=False,
