@@ -12,7 +12,7 @@ def lvgeo():
 def lvproblem(lvgeo):
     material = cardiac_benchmark.material.HolzapfelOgden(
         f0=lvgeo.f0,
-        n0=lvgeo.n0,
+        s0=lvgeo.s0,
     )
     return cardiac_benchmark.problem.LVProblem(
         geometry=lvgeo,
