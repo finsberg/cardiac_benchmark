@@ -1,10 +1,18 @@
 API Reference
 =============
 
-benchmark
-----------
+benchmark 1
+-----------
 
-.. automodule:: cardiac_benchmark.benchmark
+.. automodule:: cardiac_benchmark.benchmark1
+    :members:
+    :inherited-members:
+
+
+benchmark 2
+-----------
+
+.. automodule:: cardiac_benchmark.benchmark2
     :members:
     :inherited-members:
 
@@ -32,11 +40,18 @@ microstructure
     :members:
     :inherited-members:
 
-pressure_model
+pressure-model
 --------------
 .. automodule:: cardiac_benchmark.pressure_model
     :members:
     :inherited-members:
+
+activation-model
+----------------
+.. automodule:: cardiac_benchmark.activation_model
+    :members:
+    :inherited-members:
+
 
 problem
 -------
@@ -52,8 +67,20 @@ solver
     :inherited-members:
 
 
-step2
----------
-.. automodule:: cardiac_benchmark.step2
+utils
+-----
+.. automodule:: cardiac_benchmark.utils
+    :members:
+    :inherited-members:
+
+cli
+---
+.. automodule:: cardiac_benchmark.cli
+    :members:
+    :inherited-members:
+
+postprocess
+-----------
+.. automodule:: cardiac_benchmark.postprocess
     :members:
     :inherited-members:

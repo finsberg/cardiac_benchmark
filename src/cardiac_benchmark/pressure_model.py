@@ -8,7 +8,29 @@ import numpy as np
 import scipy.integrate
 
 
-def default_parameters_benchmark1():
+def default_parameters_benchmark1() -> Dict[str, float]:
+    r"""Default parameters for the pressure model in benchmark 1
+
+    Returns
+    -------
+    Dict[str, float]
+        Default parameters
+
+    Notes
+    -----
+    The default parameters are
+
+    .. math::
+        t_{\mathrm{sys} - \mathrm{pre}} &= 0.17 \\
+        t_{\mathrm{dias} - \mathrm{pre}} &= 0.484 \\
+        \gamma &= 0.005 \\
+        a_{\mathrm{max}} &= 5.0 \\
+        a_{\mathrm{min}} &= -30.0 \\
+        \alpha_{\mathrm{pre}} &= 5.0 \\
+        \alpha_{\mathrm{mid}} &= 1.0 \\
+        \sigma_{\mathrm{pre}} &= 7000.0 \\
+        \sigma_{\mathrm{mid}} &= 16000.0 \\
+    """
     return dict(
         t_sys_pre=0.17,
         t_dias_pre=0.484,
@@ -22,7 +44,29 @@ def default_parameters_benchmark1():
     )
 
 
-def default_lv_parameters_benchmark2():
+def default_lv_parameters_benchmark2() -> Dict[str, float]:
+    r"""Default parameters for the LV pressure model in benchmark 2
+
+    Returns
+    -------
+    Dict[str, float]
+        Default parameters
+
+    Notes
+    -----
+    The default parameters are
+
+    .. math::
+        t_{\mathrm{sys} - \mathrm{pre}} &= 0.17 \\
+        t_{\mathrm{dias} - \mathrm{pre}} &= 0.484 \\
+        \gamma &= 0.005 \\
+        a_{\mathrm{max}} &= 5.0 \\
+        a_{\mathrm{min}} &= -30.0 \\
+        \alpha_{\mathrm{pre}} &= 5.0 \\
+        \alpha_{\mathrm{mid}} &= 15.0 \\
+        \sigma_{\mathrm{pre}} &= 12000.0 \\
+        \sigma_{\mathrm{mid}} &= 16000.0 \\
+    """
     return dict(
         t_sys_pre=0.17,
         t_dias_pre=0.484,
@@ -37,6 +81,28 @@ def default_lv_parameters_benchmark2():
 
 
 def default_rv_parameters_benchmark2():
+    r"""Default parameters for the RV pressure model in benchmark 2
+
+    Returns
+    -------
+    Dict[str, float]
+        Default parameters
+
+    Notes
+    -----
+    The default parameters are
+
+    .. math::
+        t_{\mathrm{sys} - \mathrm{pre}} &= 0.17 \\
+        t_{\mathrm{dias} - \mathrm{pre}} &= 0.484 \\
+        \gamma &= 0.005 \\
+        a_{\mathrm{max}} &= 5.0 \\
+        a_{\mathrm{min}} &= -30.0 \\
+        \alpha_{\mathrm{pre}} &= 5.0 \\
+        \alpha_{\mathrm{mid}} &= 10.0 \\
+        \sigma_{\mathrm{pre}} &= 3000.0 \\
+        \sigma_{\mathrm{mid}} &= 4000.0 \\
+    """
     return dict(
         t_sys_pre=0.17,
         t_dias_pre=0.484,
@@ -55,6 +121,51 @@ def pressure_function(
     parameters: Dict[str, float],
     t_eval: Optional[np.ndarray] = None,
 ) -> np.ndarray:
+    r"""Time-dependent pressure derived from the Bestel model [3]_.
+
+    Parameters
+    ----------
+    t_span : Tuple[float, float]
+        A tuple representing start and end of time
+    parameters : Dict[str, float]
+        Parameters used in the model, see :func:`default_parameters`
+    t_eval : Optional[np.ndarray], optional
+        Time points to evaluate the solution, by default None.
+        If not provided, the default points from `scipy.integrate.solve_ivp`
+        will be used
+
+    Returns
+    -------
+    np.ndarray
+        An array of pressure points
+
+    Notes
+    -----
+    We consider a time-dependent pressure derived from the Bestel model.
+    The solution :math:`p = p(t)` is characterized as solution to the evolution equation
+
+    .. math::
+        \dot{p}(t) = -|b(t)|p(t) + \sigma_{\mathrm{mid}}|b(t)|_+
+        + \sigma_{\mathrm{pre}}|g_{\mathrm{pre}}(t)|
+
+    being b(\cdot) the activation function described below:
+
+    .. math::
+        b(t) =& a_{\mathrm{pre}}(t) + \alpha_{\mathrm{pre}}g_{\mathrm{pre}}(t)
+        + \alpha_{\mathrm{mid}} \\
+        a_{\mathrm{pre}}(t) :=& \alpha_{\mathrm{max}} \cdot f_{\mathrm{pre}}(t)
+        + \alpha_{\mathrm{min}} \cdot (1 - f_{\mathrm{pre}}(t)) \\
+        f_{\mathrm{pre}}(t) =& S^+(t - t_{\mathrm{sys}-\mathrm{pre}}) \cdot
+         S^-(t  t_{\mathrm{dias} - \mathrm{pre}}) \\
+        g_{\mathrm{pre}}(t) =& S^-(t - t_{\mathrm{dias} - \mathrm{pre}})
+
+    with :math:`S^{\pm}` given by
+
+    .. math::
+        S^{\pm}(\Delta t) = \frac{1}{2}(1 \pm \mathrm{tanh}(\frac{\Delta t}{\gamma}))
+
+
+    """
     print(f"Solving pressure model with parameters: {pprint.pformat(parameters)}")
 
     f = (

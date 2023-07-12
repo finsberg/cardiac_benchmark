@@ -1,6 +1,7 @@
 """Copied from pulse"""
 import logging
 import time
+from typing import Tuple
 
 import dolfin
 
@@ -9,6 +10,8 @@ logger = logging.getLogger(__name__)
 
 
 class NonlinearProblem(dolfin.NonlinearProblem):
+    """NonlinearProblem that re-uses the assembly matrix"""
+
     def __init__(self, J, F, bcs, **kwargs):
         super().__init__(**kwargs)
         self._J = J
@@ -53,6 +56,7 @@ class NonlinearSolver:
         dolfin.PETScOptions.clear()
 
     def update_parameters(self, parameters):
+        """Update solver parameters"""
         ps = NonlinearSolver.default_solver_parameters()
         if hasattr(self, "parameters"):
             ps.update(self.parameters)
@@ -79,6 +83,7 @@ class NonlinearSolver:
 
     @staticmethod
     def default_solver_parameters():
+        """Default solver parameters"""
         linear_solver = "superlu_dist"
         return {
             "petsc": {
@@ -104,16 +109,16 @@ class NonlinearSolver:
             "lu_solver": {"report": False, "symmetric": False, "verbose": False},
         }
 
-    def solve(self):
-        """Solve the problem.
+    def solve(self) -> Tuple[int, bool]:
+        """Solves the problem
+
         Returns
         -------
-        residual : _solver.snes (???)
-            A measure of the accuracy (convergence and error)
-            of the performed computation.
+        Tuple[int, bool]
+            (Number of iterations, Converged)
         """
 
-        msg = logger.info("Solving NonLinearProblem...")
+        logger.info("Solving NonLinearProblem...")
 
         start = time.perf_counter()
         self._solver.solve(self._problem, self._state.vector())

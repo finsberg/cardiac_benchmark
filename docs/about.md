@@ -38,3 +38,8 @@ and the following stopping criteria for the Krylov solver
 # Time integration
 
 For time integration we use the Generalized $\alpha$-method {cite}`erlicher2002analysis` with $\alpha_m = 0.2$ and $\alpha_f = 0.4$ and a time step $\Delta t = 0.001$
+
+
+```{bibliography}
+:filter: docname in docnames
+```
