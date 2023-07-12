@@ -432,7 +432,7 @@ class DataLoader:
         p0 = (0.025, 0.03, 0)
         p1 = (0, 0.03, 0)
         # Only for benchmark 2
-        p2 = (0.025, 0, 0.07)
+        p2 = (0.025, 0, 0.072)
 
         lv_vols = []
         rv_vols = []
