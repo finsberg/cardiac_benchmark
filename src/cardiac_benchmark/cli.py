@@ -107,7 +107,7 @@ def benchmark1_step_0_1(
     a_f: float = 18472.0,
     a_fs: float = 216.0,
     a_s: float = 2481.0,
-    sigma_0: float = 1.0,
+    sigma_0: float = 150e3,
 ) -> int:
     setup_logging(loglevel=loglevel)
     if outdir is not None:
