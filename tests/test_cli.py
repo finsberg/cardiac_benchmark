@@ -93,12 +93,11 @@ def test_benchmark1_step2_caseA(geo_path):
         "benchmark1_step2_caseA",
         ["benchmark1-step2", "a"],
         geo_path,
-        max_up0=(0.00019931, 0.00126132, 0.00186219),
-        min_up0=(-1.28022378e-02, -4.39693989e-06, -2.24322217e-05),
+        max_up0=(0.00019502, 0.00156037, 0.00179372),
+        min_up0=(-2.12558875e-02, -6.24197977e-06, -2.20562909e-04),
     )
 
 
-@pytest.mark.xfail(reason="Updated meshes")
 def test_benchmark2():
     runner = CliRunner(mix_stderr=False)
     data_folder = Path.cwd() / "coarse_data"
@@ -123,7 +122,6 @@ def test_benchmark2():
                 0.05,
             ],
         )
-
     assert result.exit_code == 0
 
     assert (outdir / "result.h5").is_file()

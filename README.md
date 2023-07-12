@@ -21,14 +21,15 @@ python3 -m pip install .
 
 ### Docker
 
-### Note for M1 Mac
-FEniCS is currently not available through conda for M1 mac (unless you use Rosetta 2). If you are using M1 mac then you can use the provided docker image.
-
 Run the following command to start the container interactively and mount the current directory
 ```
 docker run --rm -v $PWD:/home/shared -w /home/shared -it ghcr.io/finsberg/cardiac_benchmark:latest
 ```
 This should spin up a container with everything installed. You will also find the [Dockerfile](docker/Dockerfile) used for creating this image in this repo.
+
+
+#### Note for M1 Mac
+FEniCS is currently not available through conda for M1 mac (unless you use Rosetta 2). If you are using M1 mac then you can use the provided docker image.
 
 
 ### For developers

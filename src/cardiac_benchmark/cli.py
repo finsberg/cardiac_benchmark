@@ -11,6 +11,7 @@ from typing import Union
 import dolfin
 import typer
 
+from .geometry import BiVGeometry
 from .geometry import LVGeometry
 from .postprocess import DataLoader
 from .utils import ConstantEncoder
@@ -36,7 +37,7 @@ class Step2Case(str, Enum):
     c = "c"
 
 
-def setup_logging(loglevel):
+def setup_logging(loglevel=logging.INFO):
     logging.basicConfig(
         level=loglevel,
         format=(
@@ -106,7 +107,7 @@ def benchmark1_step_0_1(
     a_f: float = 18472.0,
     a_fs: float = 216.0,
     a_s: float = 2481.0,
-    sigma_0: float = 1.0,
+    sigma_0: float = 150e3,
 ) -> int:
     setup_logging(loglevel=loglevel)
     if outdir is not None:
@@ -369,15 +370,15 @@ def download_data_benchmark2(
 
     data = {
         Resolution.coarse: {
-            "mesh_h5": "https://drive.google.com/uc?id=1ZOl2NWeQbQVhKcLFlC81ZTEZ-EY_Dwrj&export=download",
             "mesh_xdmf": "https://drive.google.com/uc?id=1ijbYNyEFxmRAgdztN2Aw9Ll_VsWz7BSE&export=download",
+            "mesh_h5": "https://drive.google.com/uc?id=1ZOl2NWeQbQVhKcLFlC81ZTEZ-EY_Dwrj&export=download",
             "fiber": "https://drive.google.com/uc?id=1ZIlNPxLxdCVdMqTlZzoWdliBqKN-qNWd&export=download",
             "sheet": "https://drive.google.com/uc?id=1EmYFua-_dFU3_OY_0PJVmnOS2QFyYIf4&export=download",
             "sheet_normal": "https://drive.google.com/uc?id=1rejGIziVkAJFssLFF38oVMaWh9a4F94I&export=download",
         },
         Resolution.fine: {
-            "mesh_h5": "https://drive.google.com/uc?id=16f9LXN3jB-nEDtvhbIA1O0QZB6cCGd78&export=download",
             "mesh_xdmf": "https://drive.google.com/uc?id=1CTG17jPe6y6aZMnqmSM4n-OHgc9S3QWN&export=download",
+            "mesh_h5": "https://drive.google.com/uc?id=16f9LXN3jB-nEDtvhbIA1O0QZB6cCGd78&export=download",
             "fiber": "https://drive.google.com/uc?id=1WzTMCfwy1Sxjnp7cmPT5WW6vBQ15aET-&export=download",
             "sheet": "https://drive.google.com/uc?id=13ESPrIFBvy2Qi8FflcZtefmy2obvpuiz&export=download",
             "sheet_normal": "https://drive.google.com/uc?id=1gTORU_BarcNKJAiFc9WjSLwGAIomJghN&export=download",
@@ -416,6 +417,57 @@ def download_data_benchmark2(
         data[resolution]["sheet_normal"],
         fiberdir / "bi_ventricular_sheet_normal.h5",
     )
+
+
+@app.command(help="Convert downloaded data to be viewed in paraview")
+def convert_data_to_paraview(
+    data_folder: Path,
+    outdir: Optional[Path] = typer.Option(None),
+):
+    setup_logging()
+    mesh_file = data_folder / "bi_ventricular.xdmf"
+    assert mesh_file.is_file(), f"Missing {mesh_file}"
+    fiber_file = data_folder / "fibers/bi_ventricular_fiber.h5"
+    assert fiber_file.is_file(), f"Missing {fiber_file}"
+    sheet_file = data_folder / "fibers/bi_ventricular_sheet.h5"
+    assert sheet_file.is_file(), f"Missing {sheet_file}"
+    sheet_normal_file = data_folder / "fibers/bi_ventricular_sheet_normal.h5"
+    assert sheet_normal_file.is_file(), f"Missing {sheet_normal_file}"
+
+    if outdir is None:
+        outdir = data_folder
+
+    outdir.mkdir(exist_ok=True, parents=True)
+    logger.info(f"Load geometry from {data_folder}")
+    geo = BiVGeometry.from_files(
+        mesh_file=mesh_file,
+        fiber_file=fiber_file,
+        sheet_file=sheet_file,
+        sheet_normal_file=sheet_normal_file,
+    )
+
+    mesh_path = (outdir / "mesh.xdmf").as_posix()
+    logger.info(f"Save mesh to {mesh_path}")
+    with dolfin.XDMFFile(mesh_path) as xdmf:
+        xdmf.write(geo.mesh)
+
+    ffun_path = (outdir / "ffun.xdmf").as_posix()
+    logger.info(f"Save ffun to {ffun_path}")
+    with dolfin.XDMFFile(ffun_path) as xdmf:
+        xdmf.write(geo.ffun)
+
+    microstructure_path = (outdir / "microstructure.xdmf").as_posix()
+    logger.info(f"Save microstructure to {microstructure_path}")
+    with dolfin.XDMFFile(microstructure_path) as xdmf:
+        xdmf.write_checkpoint(geo.f0, "fiber", 0.0, dolfin.XDMFFile.Encoding.HDF5, True)
+        xdmf.write_checkpoint(geo.s0, "sheet", 0.0, dolfin.XDMFFile.Encoding.HDF5, True)
+        xdmf.write_checkpoint(
+            geo.n0,
+            "sheet_normal",
+            0.0,
+            dolfin.XDMFFile.Encoding.HDF5,
+            True,
+        )
 
 
 @app.command(help="Create geometry")
