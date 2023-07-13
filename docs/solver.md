@@ -2,8 +2,14 @@
 
 The cardiac benchmark paper describes most of the parameters used in this code. However, each group still has some freedom to choose the way they solve the equations. Here we describe the choices made for this code.
 
-##  FEniCS and FEM
-We use the finite element framework FEniCS (legacy) version 2019.1.0 to solve the PDEs. We chose to use $\mathbb{P}_1$ finite elements for the displacement field.
+## Discretization Method
+We use the finite element framework FEniCS (legacy) version 2019.1.0 to solve the PDEs.
+
+## Degree of discretization Method
+We chose to use $\mathbb{P}_2$ finite elements for the displacement field.
+
+## Quadrature rules and degree
+Gaussian quadrature of degree 4
 
 ### PDE solver
 Use use the SuperLU_DIST sparse solver which is part of the PETSc suite with the following convergence criteria for the Newton iterations

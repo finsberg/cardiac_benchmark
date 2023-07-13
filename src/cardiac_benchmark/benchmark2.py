@@ -1,11 +1,10 @@
+import dolfin
 import logging
+import numpy as np
 from pathlib import Path
 from typing import Dict
 from typing import Optional
 from typing import Union
-
-import dolfin
-import numpy as np
 
 from . import activation_model
 from . import postprocess
@@ -16,6 +15,11 @@ from .problem import BiVProblem
 from .utils import _update_parameters
 
 logger = logging.getLogger(__name__)
+
+dolfin.parameters["form_compiler"]["quadrature_degree"] = 4
+dolfin.parameters["form_compiler"]["cpp_optimize"] = True
+dolfin.parameters["form_compiler"]["representation"] = "uflacs"
+dolfin.parameters["form_compiler"]["optimize"] = True
 
 
 def solve(
