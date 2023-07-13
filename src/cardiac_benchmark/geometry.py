@@ -1,3 +1,4 @@
+import abc
 import logging
 import math
 import warnings
@@ -29,9 +30,6 @@ GmshGeometry = namedtuple(
     "GmshGeometry",
     ["mesh", "cfun", "ffun", "efun", "vfun", "markers"],
 )
-
-
-HeartGeometry = Union["LVGeometry", "BiVGeometry"]
 
 
 logger = logging.getLogger(__name__)
@@ -261,7 +259,7 @@ def create_benchmark_ellipsoid_mesh_gmsh(
     gmsh.finalize()
 
 
-def save_geometry(fname, geo: HeartGeometry) -> None:
+def save_geometry(fname, geo: "HeartGeometry") -> None:
     logger.info(f"Save geometry to {fname}")
     fname = Path(fname)
     if fname.is_file():
@@ -283,7 +281,7 @@ def save_geometry(fname, geo: HeartGeometry) -> None:
                 h5file.attributes("mesh")[name] = f"{marker}_{dim}"
 
 
-def load_geometry(fname) -> HeartGeometry:
+def load_geometry(fname) -> "HeartGeometry":
     fname = Path(fname)
     if not fname.is_file():
         raise FileNotFoundError(f"File {fname} does not exist")
@@ -328,19 +326,7 @@ def load_geometry(fname) -> HeartGeometry:
     )
 
 
-class LVGeometry:
-    """
-    Create a truncated ellipsoidal geometry,
-    defined through the coordinates:
-
-    .. math::
-        X1 = Rl(t) cos(mu)
-        X2 = Rs(t) sin(mu) cos(theta)
-        X3 = Rs(t) sin(mu) sin(theta)
-
-    for t in [0, 1], mu in [0, mu_base] and theta in [0, 2pi).
-    """
-
+class HeartGeometry(abc.ABC):
     def __init__(
         self,
         mesh: Optional[dolfin.Mesh] = None,
@@ -366,6 +352,149 @@ class LVGeometry:
     @classmethod
     def from_file(cls, fname):
         return load_geometry(fname)
+
+    @staticmethod
+    @abc.abstractmethod
+    def load_mesh(mesh_file):
+        ...
+
+    @classmethod
+    def from_files(
+        cls,
+        mesh_file: Union[str, Path],
+        fiber_file: Union[str, Path, None] = None,
+        sheet_file: Union[str, Path, None] = None,
+        sheet_normal_file: Union[str, Path, None] = None,
+    ) -> "HeartGeometry":
+        mesh_file = Path(mesh_file)
+        if not mesh_file.is_file():
+            raise FileNotFoundError(f"File {mesh_file} does not exist")
+        mesh, ffun, markers = cls.load_mesh(mesh_file)
+
+        complete_microstructure = True
+        if fiber_file is None:
+            complete_microstructure = False
+            logger.warning("Missing file for fibers. ")
+        else:
+            fiber_file = Path(fiber_file)
+
+        if sheet_file is None:
+            complete_microstructure = False
+            logger.warning("Missing file for sheets. ")
+        else:
+            sheet_file = Path(sheet_file)
+
+        if sheet_normal_file is None:
+            complete_microstructure = False
+            logger.warning("Missing file for sheet_normals. ")
+        else:
+            sheet_normal_file = Path(sheet_normal_file)
+
+        if not complete_microstructure:
+            # TODO: Could also generate fibers using ldrb
+            raise RuntimeError("Missing microstructure")
+
+        f0, s0, n0 = cls.load_microstructure(
+            mesh,
+            fiber_file,
+            sheet_file,
+            sheet_normal_file,
+        )
+        return cls(
+            mesh=mesh,
+            ffun=ffun,
+            markers=markers,
+            f0=f0,
+            s0=s0,
+            n0=n0,
+        )
+
+    @staticmethod
+    def load_microstructure(mesh, fiber_file, sheet_file, sheet_normal_file):
+        # Load signatures on root process
+        signatures = {}
+        if mesh.mpi_comm().rank == 0:
+            with h5py.File(fiber_file, "r") as f:
+                signatures["fiber"] = eval(f["fiber"].attrs["signature"].decode())
+            with h5py.File(sheet_file, "r") as f:
+                signatures["sheet"] = eval(f["sheet"].attrs["signature"].decode())
+            with h5py.File(sheet_normal_file, "r") as f:
+                signatures["sheet_normal"] = eval(
+                    f["sheet_normal"].attrs["signature"].decode(),
+                )
+        # Broadcast to the other processes
+        signatures = mesh.mpi_comm().bcast(signatures, root=0)
+        signatures = signatures
+
+        # Create functions and load them
+        f0 = dolfin.Function(dolfin.FunctionSpace(mesh, signatures["fiber"]))
+        with dolfin.HDF5File(
+            mesh.mpi_comm(),
+            fiber_file.as_posix(),
+            "r",
+        ) as f:
+            f.read(f0, "fiber")
+
+        s0 = dolfin.Function(dolfin.FunctionSpace(mesh, signatures["sheet"]))
+        with dolfin.HDF5File(
+            mesh.mpi_comm(),
+            sheet_file.as_posix(),
+            "r",
+        ) as f:
+            f.read(s0, "sheet")
+
+        n0 = dolfin.Function(
+            dolfin.FunctionSpace(mesh, signatures["sheet_normal"]),
+        )
+        with dolfin.HDF5File(
+            mesh.mpi_comm(),
+            sheet_normal_file.as_posix(),
+            "r",
+        ) as f:
+            f.read(n0, "sheet_normal")
+
+        return (f0, s0, n0)
+
+    def save(self, fname: Union[str, Path]) -> None:
+        """Save geometry to file
+
+        Parameters
+        ----------
+        fname : str
+            Name of file
+        """
+        save_geometry(fname=fname, geo=self)
+
+
+class LVGeometry(HeartGeometry):
+    r"""
+    Create a truncated ellipsoidal geometry,
+    defined through the coordinates:
+
+    .. math::
+        x &= r_l(t) \cos(\mu)\\
+        y &= r_s(t) \sin(\mu) \cos(\theta)\\
+        z &= r_s(t) \sin(\mu) \sin(\theta)\\
+
+    for t in [0, 1], mu in [0, \mu_{mathrm{base}] and theta in [0, 2\pi).
+    """
+
+    @staticmethod
+    def load_mesh(mesh_file):
+        mesh = dolfin.Mesh()
+        ffun_val = dolfin.MeshValueCollection("size_t", mesh, 2)
+        with dolfin.XDMFFile(mesh.mpi_comm(), mesh_file.as_posix()) as f:
+            f.read(mesh)
+            f.read(ffun_val)
+        ffun = dolfin.MeshFunction("size_t", mesh, ffun_val)
+
+        # Hardcode markers from file
+        markers = {
+            "BASE": (3, 2),
+            "ENDO": (1, 2),
+            "EPI": (2, 2),
+        }
+        return mesh, ffun, markers
 
     @classmethod
     def from_parameters(
@@ -414,16 +543,6 @@ class LVGeometry:
             setattr(obj, key, value)
         return obj
 
-    def save(self, fname: Union[str, Path]) -> None:
-        """Save geometry to file
-
-        Parameters
-        ----------
-        fname : str
-            Name of file
-        """
-        save_geometry(fname=fname, geo=self)
-
     def __repr__(self):
         return f"{self.__class__.__name__}()"
 
@@ -451,74 +570,7 @@ class LVGeometry:
         )
 
 
-class BiVGeometry:
-    def __init__(
-        self,
-        mesh: Optional[dolfin.Mesh] = None,
-        ffun: Optional[dolfin.MeshFunction] = None,
-        markers: Optional[Dict[str, Tuple[int, int]]] = None,
-        f0: Optional[dolfin.Function] = None,
-        s0: Optional[dolfin.Function] = None,
-        n0: Optional[dolfin.Function] = None,
-    ):
-        self.mesh = mesh
-        self.ffun = ffun
-        self.f0 = f0
-        self.s0 = s0
-        self.n0 = n0
-        self.markers = markers
-
-    @classmethod
-    def from_files(
-        cls,
-        mesh_file: Union[str, Path],
-        fiber_file: Union[str, Path, None] = None,
-        sheet_file: Union[str, Path, None] = None,
-        sheet_normal_file: Union[str, Path, None] = None,
-    ) -> "BiVGeometry":
-        mesh_file = Path(mesh_file)
-        if not mesh_file.is_file():
-            raise FileNotFoundError(f"File {mesh_file} does not exist")
-        mesh, ffun, markers = cls.load_mesh(mesh_file)
-
-        complete_microstructure = True
-        if fiber_file is None:
-            complete_microstructure = False
-            logger.warning("Missing file for fibers. ")
-        else:
-            fiber_file = Path(fiber_file)
-
-        if sheet_file is None:
-            complete_microstructure = False
-            logger.warning("Missing file for sheets. ")
-        else:
-            sheet_file = Path(sheet_file)
-
-        if sheet_normal_file is None:
-            complete_microstructure = False
-            logger.warning("Missing file for sheet_normals. ")
-        else:
-            sheet_normal_file = Path(sheet_normal_file)
-
-        if not complete_microstructure:
-            # TODO: Could also generate fibers using ldrb
-            raise RuntimeError("Missing microstructure")
-
-        f0, s0, n0 = cls.load_microstructure(
-            mesh,
-            fiber_file,
-            sheet_file,
-            sheet_normal_file,
-        )
-        return cls(
-            mesh=mesh,
-            ffun=ffun,
-            markers=markers,
-            f0=f0,
-            s0=s0,
-            n0=n0,
-        )
-
+class BiVGeometry(HeartGeometry):
     @staticmethod
     def generate_fibers_ldrb(markers, mesh, ffun):
         import ldrb
@@ -558,52 +610,6 @@ class BiVGeometry:
             "EPI": (40, 2),
         }
         return mesh, ffun, markers
-
-    @staticmethod
-    def load_microstructure(mesh, fiber_file, sheet_file, sheet_normal_file):
-        # Load signatures on root process
-        signatures = {}
-        if mesh.mpi_comm().rank == 0:
-            with h5py.File(fiber_file, "r") as f:
-                signatures["fiber"] = eval(f["fiber"].attrs["signature"].decode())
-            with h5py.File(sheet_file, "r") as f:
-                signatures["sheet"] = eval(f["sheet"].attrs["signature"].decode())
-            with h5py.File(sheet_normal_file, "r") as f:
-                signatures["sheet_normal"] = eval(
-                    f["sheet_normal"].attrs["signature"].decode(),
-                )
-        # Broadcast to the other processes
-        signatures = mesh.mpi_comm().bcast(signatures, root=0)
-        signatures = signatures
-
-        # Create functions and load them
-        f0 = dolfin.Function(dolfin.FunctionSpace(mesh, signatures["fiber"]))
-        with dolfin.HDF5File(
-            mesh.mpi_comm(),
-            fiber_file.as_posix(),
-            "r",
-        ) as f:
-            f.read(f0, "fiber")
-
-        s0 = dolfin.Function(dolfin.FunctionSpace(mesh, signatures["sheet"]))
-        with dolfin.HDF5File(
-            mesh.mpi_comm(),
-            sheet_file.as_posix(),
-            "r",
-        ) as f:
-            f.read(s0, "sheet")
-
-        n0 = dolfin.Function(
-            dolfin.FunctionSpace(mesh, signatures["sheet_normal"]),
-        )
-        with dolfin.HDF5File(
-            mesh.mpi_comm(),
-            sheet_normal_file.as_posix(),
-            "r",
-        ) as f:
-            f.read(n0, "sheet_normal")
-
-        return (f0, s0, n0)
 
 
 if __name__ == "__main__":

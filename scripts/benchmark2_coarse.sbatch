@@ -34,7 +34,7 @@ SCRATCH_DIRECTORY=/global/D1/homes/${USER}/cardiac_benchmark/benchmark2/coarse/$
 mkdir -p ${SCRATCH_DIRECTORY}
 echo "Scratch directory: ${SCRATCH_DIRECTORY}"
 
-echo "Run command: ${LIBRARY_ROOT}/venv/bin/cardiac-benchmark benchmark2 --outdir "${SCRATCH_DIRECTORY}" "${LIBRARY_ROOT}/data_coarse""
+echo "Run command: ${LIBRARY_ROOT}/venv/bin/cardiac-benchmark benchmark2 --outdir "${SCRATCH_DIRECTORY}" --geometry-path "${LIBRARY_ROOT}/biv_geometry_coarse.h5""
 # Assuming that you installed the software in a virutal environment in ${LIBRARY_ROOT}/venv
-srun ${LIBRARY_ROOT}/venv/bin/cardiac-benchmark benchmark2 --outdir "${SCRATCH_DIRECTORY}" "${LIBRARY_ROOT}/data_coarse"
+srun ${LIBRARY_ROOT}/venv/bin/cardiac-benchmark benchmark2 --outdir "${SCRATCH_DIRECTORY}" --geometry-path "${LIBRARY_ROOT}/biv_geometry_coarse.h5"
 cp slurm-output/${SLURM_JOBID}-cardiac-benchmark-std* ${SCRATCH_DIRECTORY}

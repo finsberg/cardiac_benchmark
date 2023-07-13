@@ -1,3 +1,13 @@
+r"""
+Implementation of the mechanics problem
+
+For time integration we employ the generalized :math:`\alpha`-method [1]_.
+
+    .. [1] Silvano Erlicher, Luca Bonaventura, Oreste Bursi.
+        The analysis of the Generalized-alpha method for
+        non-linear dynamic problems. Computational Mechanics,
+        Springer Verlag, 2002, 28, pp.83-104, doi:10.1007/s00466-001-0273-z
+"""
 import abc
 import typing
 
@@ -34,19 +44,6 @@ def interpolate(x0: T, x1: T, alpha: float):
 
 
 class Problem(abc.ABC):
-    r"""
-    Class for the mechanics problem
-
-    For time integration we employ the generalized :math:`\alpha`-method [1]_.
-
-    .. rubric:: Reference
-
-        .. [1] Silvano Erlicher, Luca Bonaventura, Oreste Bursi.
-            The analysis of the Generalized-alpha method for
-            non-linear dynamic problems. Computational Mechanics,
-            Springer Verlag, 2002, 28, pp.83-104, doi:10.1007/s00466-001-0273-z
-    """
-
     def __init__(
         self,
         geometry: HeartGeometry,
@@ -267,7 +264,7 @@ class Problem(abc.ABC):
         )
 
     def von_Mises(self) -> ufl.Coefficient:
-        r"""Compute the von Mises stress tensor $\sigma_v$, with
+        r"""Compute the von Mises stress tensor :math`\sigma_v`, with
 
         .. math::
 
@@ -282,7 +279,7 @@ class Problem(abc.ABC):
         Returns
         -------
         ufl.Coefficient
-            _description_
+            The von Mises stress tensor
         """
         u = self.u
         a = self.a(u=self.u, u_old=self.u_old, v_old=self.v_old, a_old=self.a_old)

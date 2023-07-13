@@ -6,7 +6,6 @@ import pprint
 from enum import Enum
 from pathlib import Path
 from typing import Optional
-from typing import Union
 
 import dolfin
 import typer
@@ -92,7 +91,8 @@ def main(
 
 def benchmark1_step_0_1(
     step: int,
-    case: Union[str, int] = 0,
+    case: str = "",
+    geometry_path: Path = typer.Option(),
     outdir: Optional[Path] = typer.Option(None),
     run_benchmark: bool = True,
     run_postprocess: bool = True,
@@ -100,7 +100,6 @@ def benchmark1_step_0_1(
     alpha_f: float = 0.4,
     zero_pressure: bool = False,
     zero_activation: bool = False,
-    geometry_path: Optional[Path] = typer.Option(None),
     function_space: str = "P_2",
     loglevel: int = logging.INFO,
     a: float = 59.0,
@@ -171,12 +170,12 @@ def benchmark1_step_0_1(
 @app.command(help="Run benchmark 1 - step 0")
 def benchmark1_step0(
     case: Step0Case,
+    geometry_path: Path = typer.Option(),
     outdir: Optional[Path] = typer.Option(None),
     run_benchmark: bool = True,
     run_postprocess: bool = True,
     alpha_m: float = 0.2,
     alpha_f: float = 0.4,
-    geometry_path: Optional[Path] = typer.Option(None),
     function_space: str = "P_2",
     loglevel: int = logging.INFO,
 ) -> int:
@@ -210,12 +209,12 @@ def benchmark1_step0(
 
 @app.command(help="Run benchmark 1 - step 1")
 def benchmark1_step1(
+    geometry_path: Path = typer.Option(),
     outdir: Optional[Path] = typer.Option(None),
     run_benchmark: bool = True,
     run_postprocess: bool = True,
     alpha_m: float = 0.2,
     alpha_f: float = 0.4,
-    geometry_path: Optional[Path] = typer.Option(None),
     function_space: str = "P_2",
     loglevel: int = logging.INFO,
 ) -> int:
@@ -241,12 +240,12 @@ def benchmark1_step1(
 @app.command(help="Run benchmark 1 - step 2")
 def benchmark1_step2(
     case: Step2Case,
+    geometry_path: Path = typer.Option(),
     outdir: Optional[Path] = typer.Option(None),
     run_benchmark: bool = True,
     run_postprocess: bool = True,
     alpha_m: float = 0.2,
     alpha_f: float = 0.4,
-    geometry_path: Optional[Path] = typer.Option(None),
     function_space: str = "P_2",
     loglevel: int = logging.INFO,
 ) -> int:
@@ -295,7 +294,7 @@ def benchmark1_step2(
 
 @app.command(help="Run benchmark 2")
 def benchmark2(
-    data_folder: Path,
+    geometry_path: Path = typer.Option(),
     outdir: Optional[Path] = typer.Option(None),
     run_benchmark: bool = True,
     run_postprocess: bool = True,
@@ -314,21 +313,14 @@ def benchmark2(
     outdir.mkdir(exist_ok=True, parents=True)
     outpath = outdir / "result.h5"
 
-    mesh_file = data_folder / "bi_ventricular.xdmf"
-    assert mesh_file.is_file(), f"Missing {mesh_file}"
-    fiber_file = data_folder / "fibers/bi_ventricular_fiber.h5"
-    assert fiber_file.is_file(), f"Missing {fiber_file}"
-    sheet_file = data_folder / "fibers/bi_ventricular_sheet.h5"
-    assert sheet_file.is_file(), f"Missing {sheet_file}"
-    sheet_normal_file = data_folder / "fibers/bi_ventricular_sheet_normal.h5"
-    assert sheet_normal_file.is_file(), f"Missing {sheet_normal_file}"
-
     from . import benchmark2
 
     params = benchmark2.default_parameters()
     params["outpath"] = outpath
     params["problem_parameters"]["alpha_m"] = alpha_m
     params["problem_parameters"]["alpha_f"] = alpha_f
+    params["geometry_path"] = geometry_path.as_posix()
+    params["T"] = T
     params["problem_parameters"]["function_space"] = function_space
 
     parameters = params.copy()
@@ -344,14 +336,7 @@ def benchmark2(
         )
 
     if run_benchmark:
-        benchmark2.run(
-            mesh_file=mesh_file,
-            fiber_file=fiber_file,
-            sheet_file=sheet_file,
-            sheet_normal_file=sheet_normal_file,
-            T=T,
-            **params,
-        )
+        benchmark2.run(**params)
 
     loader = DataLoader(outpath)
     if run_postprocess:
@@ -360,7 +345,71 @@ def benchmark2(
     return 0
 
 
-@app.command(help="Download and extract data for benchmark2")
+class FiberSpaces(str, Enum):
+    P1 = "P1"
+    P2 = "P2"
+
+
+@app.command(help="Download and extract data for benchmark 1")
+def download_data_benchmark1(
+    outdir: Optional[Path] = typer.Option(None),
+    fiber_space: FiberSpaces = FiberSpaces.P2,
+):
+    setup_logging(loglevel=logging.INFO)
+    import urllib.request
+
+    mesh_data = {
+        "mesh_xdmf": "https://drive.google.com/uc?id=1xpEQB0EgKZCgdC2pG2C7cUIXkH1LvShe&export=download",
+        "mesh_h5": "https://drive.google.com/uc?id=1xjLRJbOBViq8Lq3Ktk9STkjzcFtF6rTP&export=download",
+    }
+    fiber_data = {
+        FiberSpaces.P1: {
+            "fiber": "https://drive.google.com/uc?id=15_aXtjjeYC9T8uNbByhSBvHTbkfXkUWc&export=download",
+            "sheet": "https://drive.google.com/uc?id=1tr2niWHHvkLMrL7hs0H_VorUb6WYhqSh&export=download",
+            "sheet_normal": "https://drive.google.com/uc?id=1fF7vBsfAbEDd_bfElFc4QLlndRkl53rN&export=download",
+        },
+        FiberSpaces.P2: {
+            "fiber": "https://drive.google.com/uc?id=1o6sLdGADh9mFb0RRZDEX3TSZe6ZsEV3I&export=download",
+            "sheet": "https://drive.google.com/uc?id=1iehW_sgJojr63ziu4PUmase0q9-UaeJP&export=download",
+            "sheet_normal": "https://drive.google.com/uc?id=1S_dRKg3niF4sIXxmrbqrDcZMNW8EFsz6&export=download",
+        },
+    }
+
+    if outdir is None:
+        outdir = Path.cwd() / "data_benchmark1"
+    outdir.mkdir(exist_ok=True, parents=True)
+    fiberdir = outdir / "fibers" / FiberSpaces[fiber_space].name.lower()
+    fiberdir.mkdir(exist_ok=True, parents=True)
+    logger.info(f"Download data for benchmark 1 to {outdir}")
+
+    logger.info("Download ellipsoid_0.005.h5")
+    urllib.request.urlretrieve(
+        mesh_data["mesh_h5"],
+        outdir / "ellipsoid_0.005.h5",
+    )
+    logger.info("Download ellipsoid_0.005.h5")
+    urllib.request.urlretrieve(
+        mesh_data["mesh_xdmf"],
+        outdir / "ellipsoid_0.005.xdmf",
+    )
+    logger.info("Download ellipsoid_fiber.h5")
+    urllib.request.urlretrieve(
+        fiber_data[FiberSpaces[fiber_space]]["fiber"],
+        fiberdir / "ellipsoid_fiber.h5",
+    )
+    logger.info("Download ellipsoid_sheet.h5")
+    urllib.request.urlretrieve(
+        fiber_data[FiberSpaces[fiber_space]]["sheet"],
+        fiberdir / "ellipsoid_sheet.h5",
+    )
+    logger.info("Download ellipsoid_sheet_normal.h5")
+    urllib.request.urlretrieve(
+        fiber_data[FiberSpaces[fiber_space]]["sheet_normal"],
+        fiberdir / "ellipsoid_sheet_normal.h5",
+    )
+
+
+@app.command(help="Download and extract data for benchmark 2")
 def download_data_benchmark2(
     resolution: Resolution,
     outdir: Optional[Path] = typer.Option(None),
@@ -419,10 +468,73 @@ def download_data_benchmark2(
     )
 
 
-@app.command(help="Convert downloaded data to be viewed in paraview")
-def convert_data_to_paraview(
+@app.command(help="Convert downloaded data for benchmark 1")
+def convert_data_benchmark1(
     data_folder: Path,
+    outpath: Optional[Path] = typer.Option(None),
     outdir: Optional[Path] = typer.Option(None),
+    to_paraview: bool = True,
+    fiber_space: FiberSpaces = FiberSpaces.P2,
+):
+    setup_logging()
+    fiberdir = data_folder / "fibers" / FiberSpaces[fiber_space].name.lower()
+    mesh_file = data_folder / "ellipsoid_0.005.xdmf"
+    assert mesh_file.is_file(), f"Missing {mesh_file}"
+    fiber_file = fiberdir / "ellipsoid_fiber.h5"
+    assert fiber_file.is_file(), f"Missing {fiber_file}"
+    sheet_file = fiberdir / "ellipsoid_sheet.h5"
+    assert sheet_file.is_file(), f"Missing {sheet_file}"
+    sheet_normal_file = fiberdir / "ellipsoid_sheet_normal.h5"
+    assert sheet_normal_file.is_file(), f"Missing {sheet_normal_file}"
+
+    if outdir is None:
+        outdir = data_folder
+
+    outdir.mkdir(exist_ok=True, parents=True)
+    logger.info(f"Load geometry from {data_folder}")
+    geo = LVGeometry.from_files(
+        mesh_file=mesh_file,
+        fiber_file=fiber_file,
+        sheet_file=sheet_file,
+        sheet_normal_file=sheet_normal_file,
+    )
+
+    if outpath is not None:
+        geo.save(outpath)
+
+    if not to_paraview:
+        return
+
+    mesh_path = (outdir / "mesh.xdmf").as_posix()
+    logger.info(f"Save mesh to {mesh_path}")
+    with dolfin.XDMFFile(mesh_path) as xdmf:
+        xdmf.write(geo.mesh)
+
+    ffun_path = (outdir / "ffun.xdmf").as_posix()
+    logger.info(f"Save ffun to {ffun_path}")
+    with dolfin.XDMFFile(ffun_path) as xdmf:
+        xdmf.write(geo.ffun)
+
+    microstructure_path = (outdir / "microstructure.xdmf").as_posix()
+    logger.info(f"Save microstructure to {microstructure_path}")
+    with dolfin.XDMFFile(microstructure_path) as xdmf:
+        xdmf.write_checkpoint(geo.f0, "fiber", 0.0, dolfin.XDMFFile.Encoding.HDF5, True)
+        xdmf.write_checkpoint(geo.s0, "sheet", 0.0, dolfin.XDMFFile.Encoding.HDF5, True)
+        xdmf.write_checkpoint(
+            geo.n0,
+            "sheet_normal",
+            0.0,
+            dolfin.XDMFFile.Encoding.HDF5,
+            True,
+        )
+
+
+@app.command(help="Convert downloaded data for benchmark 2")
+def convert_data_benchmark2(
+    data_folder: Path,
+    outpath: Optional[Path] = typer.Option(None),
+    outdir: Optional[Path] = typer.Option(None),
+    to_paraview: bool = True,
 ):
     setup_logging()
     mesh_file = data_folder / "bi_ventricular.xdmf"
@@ -445,6 +557,12 @@ def convert_data_to_paraview(
         sheet_file=sheet_file,
         sheet_normal_file=sheet_normal_file,
     )
+
+    if outpath is not None:
+        geo.save(outpath)
+
+    if not to_paraview:
+        return
 
     mesh_path = (outdir / "mesh.xdmf").as_posix()
     logger.info(f"Save mesh to {mesh_path}")

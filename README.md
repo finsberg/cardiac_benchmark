@@ -71,29 +71,37 @@ which by default will run benchmark 1 - step 1.
     ```
     cardiac-benchmark create-geometry geometry.h5
     ```
+- Download provided for benchmark 1 to a folder called `data_benchmark1` with P2 fibers
+    ```
+    cardiac-benchmark download-data-benchmark1 --fiber-space=P2 --outdir=data_benchmark1
+    ```
+- Convert data for benchmark1 with P2 fiber space into a single file and files to be viewed in Paraview
+    ```
+    cardiac-benchmark convert-data-benchmark1 data_benchmark1 --outpath="lv_ellipsoid.h5"
+    ```
 - Run benchmark 1 step 0 case A
     ```
-    cardiac-benchmark benchmark1-step0 a
+    cardiac-benchmark benchmark1-step0 a --geometry-path="lv_ellipsoid.h5"
     ```
 - Run benchmark 1 step 0 case B
     ```
-    cardiac-benchmark benchmark1-step0 b
+    cardiac-benchmark benchmark1-step0 b --geometry-path="lv_ellipsoid.h5"
     ```
 - Run benchmark 1 step 1
     ```
-    cardiac-benchmark benchmark1-step1
+    cardiac-benchmark benchmark1-step1 --geometry-path="lv_ellipsoid.h5"
     ```
 - Run benchmark 1 step 2 case A
     ```
-    cardiac-benchmark benchmark1-step2 a
+    cardiac-benchmark benchmark1-step2 a --geometry-path="lv_ellipsoid.h5"
     ```
 - Run benchmark 1 step 2 case B
     ```
-    cardiac-benchmark benchmark1-step2 b
+    cardiac-benchmark benchmark1-step2 b --geometry-path="lv_ellipsoid.h5"
     ```
 - Run benchmark 1 step 2 case C
     ```
-    cardiac-benchmark benchmark1-step2 c
+    cardiac-benchmark benchmark1-step2 c --geometry-path="lv_ellipsoid.h5"
     ```
 - Download coarse data for benchmark 2 to a folder called `data_coarse`
     ```
@@ -103,9 +111,13 @@ which by default will run benchmark 1 - step 1.
     ```
     cardiac-benchmark download-data-benchmark2 fine --outdir=data_fine
     ```
+- Convert data for benchmark 2 into a single file and files to be viewed in Paraview
+    ```
+    cardiac-benchmark convert-data-benchmark2 data_benchmark2_coarse --outpath="biv_ellipsoid_coarse.h5"
+    ```
 - Run benchmark 2 with fine data
     ```
-    cardiac-benchmark benchmark2 data_coarse
+    cardiac-benchmark benchmark2 --geometry-path="biv_ellipsoid_coarse.h5"
     ```
 
 
