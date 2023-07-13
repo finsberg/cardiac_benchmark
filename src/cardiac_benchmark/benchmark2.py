@@ -87,14 +87,14 @@ def default_parameters():
         lv_pressure_parameters=pressure_model.default_lv_parameters_benchmark2(),
         rv_pressure_parameters=pressure_model.default_rv_parameters_benchmark2(),
         activation_parameters=activation_model.default_parameters(),
+        geometry_path="biv_geometry.h5",
+        outpath="results_benchmark2.h5",
+        T=1.0,
     )
 
 
 def run(
-    mesh_file: Path,
-    fiber_file: Path,
-    sheet_file: Path,
-    sheet_normal_file: Path,
+    geometry_path: Union[str, Path] = "biv_geometry.h5",
     activation_parameters: Optional[Dict[str, float]] = None,
     lv_pressure_parameters: Optional[Dict[str, float]] = None,
     rv_pressure_parameters: Optional[Dict[str, float]] = None,
@@ -107,14 +107,8 @@ def run(
 
     Parameters
     ----------
-    mesh_file: Path
-        Path to the file with the mesh
-    fiber_file: Path
-        Path to the file with the fibers
-    sheet_file: Path
-        Path to the file with the sheets
-    sheet_normal_file: Path
-        Path to the file with the sheets normals
+    geometry_path : Union[str, Path], optional
+        Path to the geometry, by default "biv_geometry.h5"
     activation_parameters : Optional[Dict[str, float]], optional
         Parameters for the activation model, by default None
     lv_pressure_parameters : Optional[Dict[str, float]], optional
@@ -138,12 +132,7 @@ def run(
     outdir = Path(outpath).parent
     outdir.mkdir(parents=True, exist_ok=True)
 
-    geo = BiVGeometry.from_files(
-        mesh_file=mesh_file,
-        fiber_file=fiber_file,
-        sheet_file=sheet_file,
-        sheet_normal_file=sheet_normal_file,
-    )
+    geo = BiVGeometry.from_file(geometry_path)
 
     problem_parameters = _update_parameters(
         BiVProblem.default_parameters(),

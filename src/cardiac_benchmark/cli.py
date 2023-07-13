@@ -6,7 +6,6 @@ import pprint
 from enum import Enum
 from pathlib import Path
 from typing import Optional
-from typing import Union
 
 import dolfin
 import typer
@@ -92,7 +91,8 @@ def main(
 
 def benchmark1_step_0_1(
     step: int,
-    case: Union[str, int] = 0,
+    case: str = "",
+    geometry_path: Path = typer.Option(),
     outdir: Optional[Path] = typer.Option(None),
     run_benchmark: bool = True,
     run_postprocess: bool = True,
@@ -100,7 +100,6 @@ def benchmark1_step_0_1(
     alpha_f: float = 0.4,
     zero_pressure: bool = False,
     zero_activation: bool = False,
-    geometry_path: Optional[Path] = typer.Option(None),
     function_space: str = "P_2",
     loglevel: int = logging.INFO,
     a: float = 59.0,
@@ -171,12 +170,12 @@ def benchmark1_step_0_1(
 @app.command(help="Run benchmark 1 - step 0")
 def benchmark1_step0(
     case: Step0Case,
+    geometry_path: Path = typer.Option(),
     outdir: Optional[Path] = typer.Option(None),
     run_benchmark: bool = True,
     run_postprocess: bool = True,
     alpha_m: float = 0.2,
     alpha_f: float = 0.4,
-    geometry_path: Optional[Path] = typer.Option(None),
     function_space: str = "P_2",
     loglevel: int = logging.INFO,
 ) -> int:
@@ -210,12 +209,12 @@ def benchmark1_step0(
 
 @app.command(help="Run benchmark 1 - step 1")
 def benchmark1_step1(
+    geometry_path: Path = typer.Option(),
     outdir: Optional[Path] = typer.Option(None),
     run_benchmark: bool = True,
     run_postprocess: bool = True,
     alpha_m: float = 0.2,
     alpha_f: float = 0.4,
-    geometry_path: Optional[Path] = typer.Option(None),
     function_space: str = "P_2",
     loglevel: int = logging.INFO,
 ) -> int:
@@ -241,12 +240,12 @@ def benchmark1_step1(
 @app.command(help="Run benchmark 1 - step 2")
 def benchmark1_step2(
     case: Step2Case,
+    geometry_path: Path = typer.Option(),
     outdir: Optional[Path] = typer.Option(None),
     run_benchmark: bool = True,
     run_postprocess: bool = True,
     alpha_m: float = 0.2,
     alpha_f: float = 0.4,
-    geometry_path: Optional[Path] = typer.Option(None),
     function_space: str = "P_2",
     loglevel: int = logging.INFO,
 ) -> int:
@@ -295,7 +294,7 @@ def benchmark1_step2(
 
 @app.command(help="Run benchmark 2")
 def benchmark2(
-    data_folder: Path,
+    geometry_path: Path = typer.Option(),
     outdir: Optional[Path] = typer.Option(None),
     run_benchmark: bool = True,
     run_postprocess: bool = True,
@@ -314,21 +313,14 @@ def benchmark2(
     outdir.mkdir(exist_ok=True, parents=True)
     outpath = outdir / "result.h5"
 
-    mesh_file = data_folder / "bi_ventricular.xdmf"
-    assert mesh_file.is_file(), f"Missing {mesh_file}"
-    fiber_file = data_folder / "fibers/bi_ventricular_fiber.h5"
-    assert fiber_file.is_file(), f"Missing {fiber_file}"
-    sheet_file = data_folder / "fibers/bi_ventricular_sheet.h5"
-    assert sheet_file.is_file(), f"Missing {sheet_file}"
-    sheet_normal_file = data_folder / "fibers/bi_ventricular_sheet_normal.h5"
-    assert sheet_normal_file.is_file(), f"Missing {sheet_normal_file}"
-
     from . import benchmark2
 
     params = benchmark2.default_parameters()
     params["outpath"] = outpath
     params["problem_parameters"]["alpha_m"] = alpha_m
     params["problem_parameters"]["alpha_f"] = alpha_f
+    params["geometry_path"] = geometry_path.as_posix()
+    params["T"] = T
     params["problem_parameters"]["function_space"] = function_space
 
     parameters = params.copy()
@@ -344,14 +336,7 @@ def benchmark2(
         )
 
     if run_benchmark:
-        benchmark2.run(
-            mesh_file=mesh_file,
-            fiber_file=fiber_file,
-            sheet_file=sheet_file,
-            sheet_normal_file=sheet_normal_file,
-            T=T,
-            **params,
-        )
+        benchmark2.run(**params)
 
     loader = DataLoader(outpath)
     if run_postprocess:
