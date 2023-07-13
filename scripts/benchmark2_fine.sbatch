@@ -16,7 +16,7 @@
 #
 # $ sbatch --cpus-per-task=32 --time=02:00:00 hello.sbatch
 #SBATCH --job-name="cardiac-benchmark"
-#SBATCH --partition=defq
+#SBATCH --partition=milanq
 #SBATCH --time=3-00:00:00
 #SBATCH --nodes=1
 #SBATCH --ntasks=8
@@ -34,7 +34,7 @@ SCRATCH_DIRECTORY=/global/D1/homes/${USER}/cardiac_benchmark/benchmark2/fine/${S
 mkdir -p ${SCRATCH_DIRECTORY}
 echo "Scratch directory: ${SCRATCH_DIRECTORY}"
 
-echo "Run command: ${LIBRARY_ROOT}/venv/bin/cardiac-benchmark benchmark2 --outdir "${SCRATCH_DIRECTORY}" --geometry-path "${LIBRARY_ROOT}/biv_geometry_fine.h5""
+echo "Run command: ${LIBRARY_ROOT}/venv/bin/cardiac-benchmark benchmark2 --outdir "${SCRATCH_DIRECTORY}" --geometry-path "${LIBRARY_ROOT}/biv_ellipsoid_fine.h5""
 # Assuming that you installed the software in a virutal environment in ${LIBRARY_ROOT}/venv
-srun -n 8 ${LIBRARY_ROOT}/venv/bin/cardiac-benchmark benchmark2 --outdir "${SCRATCH_DIRECTORY}" --geometry-path "${LIBRARY_ROOT}/biv_geometry_fine.h5"
+srun -n 8 ${LIBRARY_ROOT}/venv/bin/cardiac-benchmark benchmark2 --outdir "${SCRATCH_DIRECTORY}" --geometry-path "${LIBRARY_ROOT}/biv_ellipsoid_fine.h5"
 cp slurm-output/${SLURM_JOBID}-cardiac-benchmark-std* ${SCRATCH_DIRECTORY}

@@ -82,7 +82,7 @@ cardiac-benchmark --help
 ```
 and to see the specific options for a given step you can do (for e.g `step1`)
 ```
-cardiac-benchmark benchmark1-step1 --geometry-path="lv_geometry.h5"
+cardiac-benchmark benchmark1-step1 --geometry-path="lv_ellipsoid.h5"
 ```
 It is also possible to run the scripts using
 ```
@@ -94,14 +94,14 @@ You can also use the python API
 ```python
 import cardiac_benchmark
 
-cardiac_benchmark.benchmark1.run(geometry_path="lv_geometry.h5")
+cardiac_benchmark.benchmark1.run(geometry_path="lv_ellipsoid.h5")
 ```
 which by default will run benchmark 1 - step 1.
 
 
 ### Options
 
-- Create geometry for benchmark 1 (save lv ellipsoidal geometry to `geometry.h5`). Note: requires `gmsh`
+- Create geometry for benchmark 1 (save lv ellipsoidal geometry to `lv_ellipsoid.h5`). Note: requires `gmsh`
     ```
     cardiac-benchmark create-geometry lv_ellipsoid.h5
     ```
