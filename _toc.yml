@@ -2,5 +2,9 @@ format: jb-book
 root: README
 
 chapters:
-  - file: "docs/about.md"
+  - file: "docs/problem"
+  - file: "docs/time_scheme"
+  - file: "docs/volume"
+  - file: "docs/solver"
+  - file: "docs/references"
   - file: "docs/api"
