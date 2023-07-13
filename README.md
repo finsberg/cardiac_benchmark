@@ -71,6 +71,14 @@ which by default will run benchmark 1 - step 1.
     ```
     cardiac-benchmark create-geometry geometry.h5
     ```
+- Download provided for benchmark 1 to a folder called `data_benchmark1` with P2 fibers
+    ```
+    cardiac-benchmark download-data-benchmark1 --fiber-space=P2 --outdir=data_benchmark1
+    ```
+- Convert data for benchmark1 with P2 fiber space into a single file and files to be viewed in Paraview
+    ```
+    cardiac-benchmark convert-data-benchmark1 data_benchmark1 --outpath="lv_ellipsoid.h5"
+    ```
 - Run benchmark 1 step 0 case A
     ```
     cardiac-benchmark benchmark1-step0 a
@@ -102,6 +110,10 @@ which by default will run benchmark 1 - step 1.
 - Download fine data for benchmark 2 to a folder called `data_fine`
     ```
     cardiac-benchmark download-data-benchmark2 fine --outdir=data_fine
+    ```
+- Convert data for benchmark 2 into a single file and files to be viewed in Paraview
+    ```
+    cardiac-benchmark convert-data-benchmark2 data_benchmark2_coarse --outpath="biv_ellipsoid_coarse.h5"
     ```
 - Run benchmark 2 with fine data
     ```

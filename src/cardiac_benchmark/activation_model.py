@@ -9,7 +9,7 @@ import scipy.integrate
 
 
 def default_parameters() -> Dict[str, float]:
-    r"""Default parameter for the activation model
+    r"""Default parameters for the activation model
 
     Returns
     -------

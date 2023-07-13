@@ -32,7 +32,10 @@ sphinx:
   - 'sphinx.ext.autodoc'
   - 'sphinx.ext.napoleon'
   - 'sphinx.ext.viewcode'
+  - "sphinxcontrib.bibtex"
+
   config:
-    bibtex_reference_style: author_year
+    html_last_updated_fmt: "%b %d, %Y"
+    bibtex_bibfiles: ["docs/refs.bib"]
 
 exclude_patterns: [".pytest_cache/*", ".github/*"]
