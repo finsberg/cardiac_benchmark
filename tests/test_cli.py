@@ -61,7 +61,7 @@ def _benchmark_1(
 def test_benchmark1_step0_caseA(geo_path):
     _benchmark_1(
         "benchmark1_step0_caseA",
-        ["benchmark1-step0", "a"],
+        ["benchmark1-step0", "a", "--geometry-path", geo_path],
         geo_path,
         max_up0=(0.0, 0.00113854, 0.00121422),
         min_up0=(-2.11865732e-02, -7.07775436e-06, -3.90594965e-04),
@@ -71,7 +71,7 @@ def test_benchmark1_step0_caseA(geo_path):
 def test_benchmark1_step0_caseB(geo_path):
     _benchmark_1(
         "benchmark1_step0_caseB",
-        ["benchmark1-step0", "b"],
+        ["benchmark1-step0", "b", "--geometry-path", geo_path],
         geo_path,
         max_up0=(9.56321066e-03, 4.23419184e-05, 1.52382853e-04),
         min_up0=(6.58201731e-08, -2.48506144e-04, -1.50213958e-08),
@@ -81,7 +81,7 @@ def test_benchmark1_step0_caseB(geo_path):
 def test_benchmark1_step1(geo_path):
     _benchmark_1(
         "benchmark1_step1",
-        ["benchmark1-step1"],
+        ["benchmark1-step1", "--geometry-path", geo_path],
         geo_path,
         max_up0=(0.00029864, 0.00152623, 0.0012752),
         min_up0=(-2.01299237e-02, -4.59802750e-06, -3.08946192e-04),
@@ -91,7 +91,7 @@ def test_benchmark1_step1(geo_path):
 def test_benchmark1_step2_caseA(geo_path):
     _benchmark_1(
         "benchmark1_step2_caseA",
-        ["benchmark1-step2", "a"],
+        ["benchmark1-step2", "a", "--geometry-path", geo_path],
         geo_path,
         max_up0=(0.00019502, 0.00156037, 0.00179372),
         min_up0=(-2.12558875e-02, -6.24197977e-06, -2.20562909e-04),
@@ -107,6 +107,19 @@ def test_benchmark2():
     )
     assert res_download.exit_code == 0
 
+    geometry_path = data_folder / "biv_geometry_coarse.h5"
+
+    res_convert = runner.invoke(
+        app,
+        [
+            "convert-data-benchmark2",
+            data_folder.as_posix(),
+            "--outpath",
+            geometry_path.as_posix(),
+        ],
+    )
+    assert res_convert.exit_code == 0
+
     outdir = Path.cwd() / "test_results_benchmark2"
     # Let us mock out the actual solving to speed it up
     with patch("cardiac_benchmark.solver.NonlinearSolver.solve") as mock_solve:
@@ -115,7 +128,8 @@ def test_benchmark2():
             app,
             [
                 "benchmark2",
-                data_folder.as_posix(),
+                "--geometry-path",
+                geometry_path.as_posix(),
                 "--outdir",
                 outdir.as_posix(),
                 "--t",

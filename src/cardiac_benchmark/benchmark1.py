@@ -34,6 +34,32 @@ def solve(
     collector: postprocess.DataCollector,
     store_freq: int = 1,
 ) -> None:
+    """Solve the problem for benchmark 1
+
+    Parameters
+    ----------
+    problem : LVProblem
+        The problem
+    tau : dolfin.Constant
+        Constant in the model representing the activation
+    activation : np.ndarray
+        An array of activation points
+    pressure : np.ndarray
+        Constant in the model representing the pressure
+    p : dolfin.Constant
+        An array of pressure points
+    time : np.ndarray
+        Time stamps
+    collector : postprocess.DataCollector
+        Datacollector used to store the results
+    store_freq : int, optional
+        Frequency of how often to store the results, by default 1
+
+    Raises
+    ------
+    RuntimeError
+        If the solver does not converge
+    """
     for i, (t, a, p_) in enumerate(zip(time, activation, pressure)):
         logger.info(f"{i}: Solving for time {t:.3f} with tau = {a} and pressure = {p_}")
 
@@ -53,6 +79,24 @@ def get_geometry(
     mesh_parameters: Optional[Dict[str, float]] = None,
     fiber_parameters: Optional[Dict[str, Union[float, str]]] = None,
 ) -> LVGeometry:
+    """Get the LV geometry from a path. If the file does not
+    exist, generate a new geometry with the given parameters
+    and save it to the path.
+
+    Parameters
+    ----------
+    path : Path
+        The path to the geometry
+    mesh_parameters : Optional[Dict[str, float]], optional
+        Parameter for the mesh, by default None
+    fiber_parameters : Optional[Dict[str, Union[float, str]]], optional
+        Parameter for the fibers, by default None
+
+    Returns
+    -------
+    LVGeometry
+        _description_
+    """
     if not path.is_file():
         mesh_parameters = _update_parameters(
             LVGeometry.default_mesh_parameters(),
@@ -71,6 +115,7 @@ def get_geometry(
 
 
 def default_parameters():
+    """Default parameters for Benchmark 1"""
     return dict(
         problem_parameters=LVProblem.default_parameters(),
         activation_parameters=activation_model.default_parameters(),
@@ -95,6 +140,36 @@ def run(
     outpath: Union[str, Path] = "results.h5",
     geometry_path: Union[str, Path] = "geometry.h5",
 ) -> None:
+    """Run benchmark 1
+
+    Parameters
+    ----------
+    problem_parameters : Optional[Dict[str, Union[float, dolfin.Constant]]], optional
+        Parameters for the problem, by default None
+    activation_parameters : Optional[Dict[str, float]], optional
+        Parameters for the activation model, by default None
+    pressure_parameters : Optional[Dict[str, float]], optional
+        Parameters for the pressure model, by default None
+    material_parameters : Optional[Dict[str, Union[float, dolfin.Constant]]], optional
+        Parameters for the material model, by default None
+    mesh_parameters : Optional[Dict[str, float]], optional
+        Parameters for the mesh, by default None
+    fiber_parameters : Optional[Dict[str, Union[float, str]]], optional
+        Parameters for the fibers, by default None
+    zero_pressure : bool, optional
+        If True, set the pressure to zero, by default False
+    zero_activation : bool, optional
+        If True set the activation to zero, by default False
+    outpath : Union[str, Path], optional
+        Path to where to save the results, by default "results.h5"
+    geometry_path : Union[str, Path], optional
+        Path to the geometry, by default "geometry.h5"
+
+    Raises
+    ------
+    OSError
+        If output file is not an HDF5 file
+    """
     outdir = Path(outpath).parent
     outdir.mkdir(parents=True, exist_ok=True)
 
@@ -196,7 +271,7 @@ def run(
         result_filepath,
         problem=problem,
         pressure_parameters={"lv": pressure_parameters},
-        actvation_parameters=activation_parameters,
+        activation_parameters=activation_parameters,
     )
 
     solve(

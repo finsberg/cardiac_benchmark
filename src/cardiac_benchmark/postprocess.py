@@ -160,12 +160,26 @@ def load_problem(fname) -> SavedProblem:
 
 
 class DataCollector:
+    """Class for saving the simulation results
+
+    Parameters
+    ----------
+    path : str
+        HDF5 file to where to save the results
+    problem : :class:`problem.Problem`
+        The Mechanics problem
+    pressure_parameters : Optional[Dict[str, Dict[str, float]]], optional
+        Parameters used in the pressure model, by default None
+    activation_parameters : Optional[Dict[str, float]], optional
+        Parameters used in the activation model, by default None
+    """
+
     def __init__(
         self,
         path,
         problem: Problem,
         pressure_parameters: Optional[Dict[str, Dict[str, float]]] = None,
-        actvation_parameters: Optional[Dict[str, float]] = None,
+        activation_parameters: Optional[Dict[str, float]] = None,
     ) -> None:
         self._path = Path(path)
         self._comm = dolfin.MPI.comm_world
@@ -194,14 +208,15 @@ class DataCollector:
         if problem.geometry.mesh is not None:
             self._comm = problem.geometry.mesh.mpi_comm()
 
-        save_problem(path, problem, pressure_parameters, actvation_parameters)
+        save_problem(path, problem, pressure_parameters, activation_parameters)
 
     @property
     def path(self) -> str:
+        """Path to the results as a string"""
         return self._path.as_posix()
 
     def store(self, t: float) -> None:
-        """Save displacement
+        """Save data at given time step
 
         Parameters
         ----------

@@ -30,6 +30,36 @@ def solve(
     collector: postprocess.DataCollector,
     store_freq: int = 1,
 ) -> None:
+    """Solve the problem for benchmark 2
+
+    Parameters
+    ----------
+    problem : BiVProblem
+        The problem
+    tau : dolfin.Constant
+        Constant in the model representing the activation
+    activation : np.ndarray
+        An array of activation points
+    lv_pressure : np.ndarray
+        An array of LV pressure points
+    rv_pressure : np.ndarray
+        An array of RV pressure points
+    plv : dolfin.Constant
+        Constant in the model representing the LV pressure
+    prv : dolfin.Constant
+        Constant in the model representing the RV pressure
+    time : np.ndarray
+        Time stamps
+    collector : postprocess.DataCollector
+        Datacollector used to store the results
+    store_freq : int, optional
+        Frequency of how often to store the results, by default 1
+
+    Raises
+    ------
+    RuntimeError
+        If the solver does not converge
+    """
     for i, (t, a, plv_, prv_) in enumerate(
         zip(time, activation, lv_pressure, rv_pressure),
     ):
@@ -50,20 +80,21 @@ def solve(
 
 
 def default_parameters():
+    """Default parameters for Benchmark 2"""
     return dict(
         problem_parameters=BiVProblem.default_parameters(),
         material_parameters=HolzapfelOgden.default_parameters(),
         lv_pressure_parameters=pressure_model.default_lv_parameters_benchmark2(),
         rv_pressure_parameters=pressure_model.default_rv_parameters_benchmark2(),
         activation_parameters=activation_model.default_parameters(),
+        geometry_path="biv_geometry.h5",
+        outpath="results_benchmark2.h5",
+        T=1.0,
     )
 
 
 def run(
-    mesh_file: Path,
-    fiber_file: Path,
-    sheet_file: Path,
-    sheet_normal_file: Path,
+    geometry_path: Union[str, Path] = "biv_geometry.h5",
     activation_parameters: Optional[Dict[str, float]] = None,
     lv_pressure_parameters: Optional[Dict[str, float]] = None,
     rv_pressure_parameters: Optional[Dict[str, float]] = None,
@@ -72,15 +103,36 @@ def run(
     outpath: Union[str, Path] = "results_benchmark2.h5",
     T: float = 1.0,
 ):
+    """Run benchmark 2
+
+    Parameters
+    ----------
+    geometry_path : Union[str, Path], optional
+        Path to the geometry, by default "biv_geometry.h5"
+    activation_parameters : Optional[Dict[str, float]], optional
+        Parameters for the activation model, by default None
+    lv_pressure_parameters : Optional[Dict[str, float]], optional
+        Parameters for the pressure model in the LV, by default None
+    rv_pressure_parameters : Optional[Dict[str, float]], optional
+        Parameters for the pressure model in the RV, by default None
+    material_parameters : Optional[Dict[str, Union[float, dolfin.Constant]]], optional
+        Parameters for the material model, by default None
+    problem_parameters : Optional[Dict[str, Union[float, dolfin.Constant]]], optional
+        Parameters for the problem, by default None
+    outpath : Union[str, Path], optional
+        Path to where to save the results, by default "results.h5"
+    T : float, optional
+        End time of simulation, by default 1.0
+
+    Raises
+    ------
+    OSError
+        If output file is not an HDF5 file
+    """
     outdir = Path(outpath).parent
     outdir.mkdir(parents=True, exist_ok=True)
 
-    geo = BiVGeometry.from_files(
-        mesh_file=mesh_file,
-        fiber_file=fiber_file,
-        sheet_file=sheet_file,
-        sheet_normal_file=sheet_normal_file,
-    )
+    geo = BiVGeometry.from_file(geometry_path)
 
     problem_parameters = _update_parameters(
         BiVProblem.default_parameters(),
@@ -178,7 +230,7 @@ def run(
             "lv": lv_pressure_parameters,
             "rv": rv_pressure_parameters,
         },
-        actvation_parameters=activation_parameters,
+        activation_parameters=activation_parameters,
     )
 
     solve(
