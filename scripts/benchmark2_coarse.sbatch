@@ -17,7 +17,7 @@
 # $ sbatch --cpus-per-task=32 --time=02:00:00 hello.sbatch
 #SBATCH --job-name="cardiac-benchmark"
 #SBATCH --partition=defq
-#SBATCH --time=0-24:00:00
+#SBATCH --time=3-00:00:00
 #SBATCH --nodes=1
 #SBATCH --ntasks=8
 #SBATCH --ntasks-per-node=8
