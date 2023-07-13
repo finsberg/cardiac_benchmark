@@ -4,22 +4,7 @@ This is the contribution to the cardiac mechanics benchmark from Simula Research
 
 ## Installation
 
-### Conda
-
-Create the conda environment using the `environment.yml` file
-```
-conda env create -f environment.yml
-```
-Activate the enviroment
-```
-conda activate cardiac-benchmark
-```
-and finally install the `cardiac-benchmark` package (from the root of the repository)
-```
-python3 -m pip install .
-```
-
-### Docker
+### Docker (recommended)
 
 Run the following command to start the container interactively and mount the current directory
 ```
@@ -27,6 +12,21 @@ docker run --rm -v $PWD:/home/shared -w /home/shared -it ghcr.io/finsberg/cardia
 ```
 This should spin up a container with everything installed. You will also find the [Dockerfile](docker/Dockerfile) used for creating this image in this repo.
 
+
+### Conda
+
+Create the conda environment using the `environment.yml` file
+```
+conda env create -f environment.yml
+```
+Activate the environment
+```
+conda activate cardiac-benchmark
+```
+and finally install the `cardiac-benchmark` package (from the root of the repository)
+```
+python3 -m pip install .
+```
 
 #### Note for M1 Mac
 FEniCS is currently not available through conda for M1 mac (unless you use Rosetta 2). If you are using M1 mac then you can use the provided docker image.
