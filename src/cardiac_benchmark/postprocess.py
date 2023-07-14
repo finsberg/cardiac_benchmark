@@ -103,6 +103,7 @@ def load_problem(fname) -> SavedProblem:
     signature = None  # type: ignore
     time_stamps_str = None  # type: ignore
     time_stamps = None  # type: ignore
+    cls = None  # type: ignore
     if dolfin.MPI.rank(dolfin.MPI.comm_world) == 0:
         with h5py.File(path, "r") as h5file:
             # Check that we have the required keys
