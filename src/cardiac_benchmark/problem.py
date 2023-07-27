@@ -337,7 +337,10 @@ class LVProblem(Problem):
         return self.geometry.markers["ENDO"][0]
 
     def _pressure_term(self, F, w):
-        return dolfin.inner(self.parameters["p"] * ufl.cofac(F) * self.N, w) * self.ds(
+        return dolfin.inner(
+            self.parameters["p"] * ufl.det(F) * ufl.inv(ufl.grad(F)).T * self.N,
+            w,
+        ) * self.ds(
             self.endo,
         )
 
@@ -370,10 +373,10 @@ class BiVProblem(Problem):
 
     def _pressure_term(self, F, w):
         return dolfin.inner(
-            self.parameters["plv"] * ufl.cofac(F) * self.N,
+            self.parameters["plv"] * ufl.det(F) * ufl.inv(ufl.grad(F)).T * self.N,
             w,
         ) * self.ds(self.endo_lv) + dolfin.inner(
-            self.parameters["prv"] * ufl.cofac(F) * self.N,
+            self.parameters["prv"] * ufl.det(F) * ufl.inv(ufl.grad(F)).T * self.N,
             w,
         ) * self.ds(
             self.endo_rv,
