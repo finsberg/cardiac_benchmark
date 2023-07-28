@@ -193,7 +193,7 @@ def benchmark1_step0(
 
     return benchmark1_step_0_1(
         step=0,
-        case="A",
+        case=Step0Case[case].name,
         outdir=outdir,
         run_benchmark=run_benchmark,
         run_postprocess=run_postprocess,
