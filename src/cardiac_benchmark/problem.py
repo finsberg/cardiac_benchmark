@@ -106,11 +106,18 @@ class Problem(abc.ABC):
     def _form(self, u: dolfin.Function, v: dolfin.Function, w: dolfin.TestFunction):
         F = dolfin.variable(dolfin.grad(u) + dolfin.Identity(3))
         F_dot = dolfin.grad(v)
-        E_dot = dolfin.variable(0.5 * (F.T * F_dot + F_dot.T * F))
+        J = dolfin.det(F)
+        F_iso = pow(J, -1 / 3) * F
+        E_dot = dolfin.variable(0.5 * (F_iso.T * F_dot + F_dot.T * F_iso))
 
-        P = dolfin.diff(self.material.strain_energy(F), F) + F * dolfin.diff(
-            self.material.W_visco(E_dot),
-            E_dot,
+        P = (
+            dolfin.diff(self.material.strain_energy(F_iso), F)
+            + dolfin.diff(self.material.W_compress(J), F)
+            + F
+            * dolfin.diff(
+                self.material.W_visco(E_dot),
+                E_dot,
+            )
         )
         epi = dolfin.dot(self.parameters["alpha_epi"] * u, self.N) + dolfin.dot(
             self.parameters["beta_epi"] * v,
@@ -287,13 +294,20 @@ class Problem(abc.ABC):
 
         F = dolfin.variable(dolfin.grad(u) + dolfin.Identity(3))
         J = dolfin.det(F)
+        F_iso = pow(J, -1 / 3) * F
         F_dot = dolfin.grad(v)
-        E_dot = dolfin.variable(0.5 * (F.T * F_dot + F_dot.T * F))
+
+        E_dot = dolfin.variable(0.5 * (F_iso.T * F_dot + F_dot.T * F_iso))
 
         # First Piola
-        P = dolfin.diff(self.material.strain_energy(F), F) + F * dolfin.diff(
-            self.material.W_visco(E_dot),
-            E_dot,
+        P = (
+            dolfin.diff(self.material.strain_energy(F_iso), F)
+            + dolfin.diff(self.material.W_compress(J), F)
+            + F
+            * dolfin.diff(
+                self.material.W_visco(E_dot),
+                E_dot,
+            )
         )
         # Cauchy
         T = pow(J, -1.0) * P * F.T
