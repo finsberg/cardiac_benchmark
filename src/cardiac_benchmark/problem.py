@@ -105,8 +105,9 @@ class Problem(abc.ABC):
     def _first_piola(self, F: ufl.Coefficient, v: dolfin.Function):
 
         F_dot = dolfin.grad(v)
-        I = F_dot * ufl.inv(F)  # Holzapfel eq: 2.139 + 2.163
-        E_dot = dolfin.variable(0.5 * F.T * (I.T + I) * F)
+        l = F_dot * ufl.inv(F)  # Holzapfel eq: 2.139
+        d = 0.5 * (l + l.T)  # Holzapfel 2.146
+        E_dot = dolfin.variable(F.T * d * F)  # Holzapfel 2.163
 
         return dolfin.diff(self.material.strain_energy(F), F) + F * dolfin.diff(
             self.material.W_visco(E_dot),
