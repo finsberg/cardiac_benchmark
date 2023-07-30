@@ -9,9 +9,8 @@ For time integration we employ the generalized :math:`\alpha`-method [1]_.
         Springer Verlag, 2002, 28, pp.83-104, doi:10.1007/s00466-001-0273-z
 """
 import abc
-import typing
-
 import dolfin
+import typing
 import ufl
 
 from .geometry import HeartGeometry
@@ -292,7 +291,7 @@ class Problem(abc.ABC):
 
         F = dolfin.variable(dolfin.grad(u) + dolfin.Identity(3))
         J = ufl.det(F)
-        P = self._first_piola(u, v)
+        P = self._first_piola(F, v)
 
         # Cauchy
         T = pow(J, -1.0) * P * F.T
