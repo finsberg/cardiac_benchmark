@@ -103,22 +103,20 @@ class Problem(abc.ABC):
     def _acceleration_form(self, a: dolfin.Function, w: dolfin.TestFunction):
         return dolfin.inner(self.parameters["rho"] * a, w) * dolfin.dx
 
+    def _first_piola(self, F: ufl.Coefficient, v: dolfin.Function):
+
+        F_dot = dolfin.grad(v)
+        I = F_dot * ufl.inv(F)  # Holzapfel eq: 2.139 + 2.163
+        E_dot = dolfin.variable(0.5 * F.T * (I.T + I) * F)
+
+        return dolfin.diff(self.material.strain_energy(F), F) + F * dolfin.diff(
+            self.material.W_visco(E_dot),
+            E_dot,
+        )
+
     def _form(self, u: dolfin.Function, v: dolfin.Function, w: dolfin.TestFunction):
         F = dolfin.variable(dolfin.grad(u) + dolfin.Identity(3))
-        F_dot = dolfin.grad(v)
-        J = dolfin.det(F)
-        F_iso = pow(J, -1 / 3) * F
-        E_dot = dolfin.variable(0.5 * (F_iso.T * F_dot + F_dot.T * F_iso))
-
-        P = (
-            dolfin.diff(self.material.strain_energy(F_iso), F)
-            + dolfin.diff(self.material.W_compress(J), F)
-            + F
-            * dolfin.diff(
-                self.material.W_visco(E_dot),
-                E_dot,
-            )
-        )
+        P = self._first_piola(F, v)
         epi = dolfin.dot(self.parameters["alpha_epi"] * u, self.N) + dolfin.dot(
             self.parameters["beta_epi"] * v,
             self.N,
@@ -293,22 +291,9 @@ class Problem(abc.ABC):
         v = self.v(a=a, v_old=self.v_old, a_old=self.a_old)
 
         F = dolfin.variable(dolfin.grad(u) + dolfin.Identity(3))
-        J = dolfin.det(F)
-        F_iso = pow(J, -1 / 3) * F
-        F_dot = dolfin.grad(v)
+        J = ufl.det(F)
+        P = self._first_piola(u, v)
 
-        E_dot = dolfin.variable(0.5 * (F_iso.T * F_dot + F_dot.T * F_iso))
-
-        # First Piola
-        P = (
-            dolfin.diff(self.material.strain_energy(F_iso), F)
-            + dolfin.diff(self.material.W_compress(J), F)
-            + F
-            * dolfin.diff(
-                self.material.W_visco(E_dot),
-                E_dot,
-            )
-        )
         # Cauchy
         T = pow(J, -1.0) * P * F.T
         von_Mises_squared = 0.5 * (

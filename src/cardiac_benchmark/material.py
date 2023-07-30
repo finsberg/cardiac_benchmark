@@ -160,14 +160,15 @@ class HolzapfelOgden:
 
         # Invariants
         C = F.T * F
+        J = ufl.det(F)
 
-        I1 = dolfin.tr(C)
+        I1 = pow(J, -2 / 3) * dolfin.tr(C)
         I4f = dolfin.inner(C * self.f0, self.f0)
         I4s = dolfin.inner(C * self.s0, self.s0)
         I8fs = dolfin.inner(C * self.f0, self.s0)
 
         # Compressibility
-        # Wcompress = self.W_compress(J)
+        Wcompress = self.W_compress(J)
 
         # Active stress
         Wactive = self.Wactive(I4f)
@@ -177,5 +178,5 @@ class HolzapfelOgden:
         W4s = self.W_4(I4s, "s")
         W8fs = self.W_8(I8fs)
 
-        W = W1 + W4f + W4s + W8fs + Wactive
+        W = W1 + W4f + W4s + W8fs + Wactive + Wcompress
         return W
