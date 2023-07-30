@@ -1,10 +1,10 @@
+import dolfin
+import numpy as np
+import ufl
 from typing import Dict
 from typing import NamedTuple
 from typing import Tuple
 from typing import Union
-
-import dolfin
-import numpy as np
 
 
 class Microstructure(NamedTuple):
@@ -36,8 +36,8 @@ def laplace(
 
     u = dolfin.TrialFunction(V)
     v = dolfin.TestFunction(V)
-    a = dolfin.dot(dolfin.grad(u), dolfin.grad(v)) * dolfin.dx
-    L = v * dolfin.Constant(0) * dolfin.dx
+    a = ufl.dot(ufl.grad(u), ufl.grad(v)) * ufl.dx
+    L = v * dolfin.Constant(0) * ufl.dx
 
     t = dolfin.Function(V)
 

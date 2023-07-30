@@ -1,11 +1,10 @@
+import dolfin
 import logging
+import numpy as np
 from pathlib import Path
 from typing import Dict
 from typing import Optional
 from typing import Union
-
-import dolfin
-import numpy as np
 
 from . import activation_model
 from . import postprocess
@@ -70,7 +69,7 @@ def solve(
             raise RuntimeError
 
         if i % store_freq == 0:
-            dolfin.info("Store solution")
+            logger.info("Store solution")
             collector.store(t)
 
 

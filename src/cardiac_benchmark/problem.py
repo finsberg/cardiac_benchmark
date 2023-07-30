@@ -100,34 +100,34 @@ class Problem(abc.ABC):
         self.a_old = dolfin.Function(self.u_space)
 
     def _acceleration_form(self, a: dolfin.Function, w: dolfin.TestFunction):
-        return dolfin.inner(self.parameters["rho"] * a, w) * dolfin.dx
+        return ufl.inner(self.parameters["rho"] * a, w) * ufl.dx
 
     def _first_piola(self, F: ufl.Coefficient, v: dolfin.Function):
 
-        F_dot = dolfin.grad(v)
+        F_dot = ufl.grad(v)
         l = F_dot * ufl.inv(F)  # Holzapfel eq: 2.139
         d = 0.5 * (l + l.T)  # Holzapfel 2.146
-        E_dot = dolfin.variable(F.T * d * F)  # Holzapfel 2.163
+        E_dot = ufl.variable(F.T * d * F)  # Holzapfel 2.163
 
-        return dolfin.diff(self.material.strain_energy(F), F) + F * dolfin.diff(
+        return ufl.diff(self.material.strain_energy(F), F) + F * ufl.diff(
             self.material.W_visco(E_dot),
             E_dot,
         )
 
     def _form(self, u: dolfin.Function, v: dolfin.Function, w: dolfin.TestFunction):
-        F = dolfin.variable(dolfin.grad(u) + dolfin.Identity(3))
+        F = ufl.variable(ufl.grad(u) + ufl.Identity(3))
         P = self._first_piola(F, v)
-        epi = dolfin.dot(self.parameters["alpha_epi"] * u, self.N) + dolfin.dot(
+        epi = ufl.dot(self.parameters["alpha_epi"] * u, self.N) + ufl.dot(
             self.parameters["beta_epi"] * v,
             self.N,
         )
         top = self.parameters["alpha_top"] * u + self.parameters["beta_top"] * v
 
         return (
-            dolfin.inner(P, dolfin.grad(w)) * dolfin.dx
-            + self._pressure_term(F, w)
-            + dolfin.inner(epi * w, self.N) * self.ds(self.epi)
-            + dolfin.inner(top, w) * self.ds(self.top)
+            ufl.inner(P, ufl.grad(w)) * ufl.dx
+            - self._pressure_term(F, w)
+            + ufl.inner(epi * w, self.N) * self.ds(self.epi)
+            + ufl.inner(top, w) * self.ds(self.top)
         )
 
     @abc.abstractmethod
@@ -216,7 +216,7 @@ class Problem(abc.ABC):
     @property
     def ds(self):
         """Surface measure"""
-        return dolfin.ds(domain=self.geometry.mesh, subdomain_data=self.geometry.ffun)
+        return ufl.ds(domain=self.geometry.mesh, subdomain_data=self.geometry.ffun)
 
     @property
     def epi(self):
@@ -231,7 +231,7 @@ class Problem(abc.ABC):
     @property
     def N(self):
         """Facet Noraml"""
-        return dolfin.FacetNormal(self.geometry.mesh)
+        return ufl.FacetNormal(self.geometry.mesh)
 
     def _init_forms(self) -> None:
         """Initialize ufl forms"""
@@ -255,7 +255,7 @@ class Problem(abc.ABC):
             interpolate(self.v_old, v_new, alpha_f),
             w,
         )
-        jacobian = dolfin.derivative(
+        jacobian = ufl.derivative(
             virtual_work,
             self.u,
             self.du,
@@ -290,7 +290,7 @@ class Problem(abc.ABC):
         a = self.a(u=self.u, u_old=self.u_old, v_old=self.v_old, a_old=self.a_old)
         v = self.v(a=a, v_old=self.v_old, a_old=self.a_old)
 
-        F = dolfin.variable(dolfin.grad(u) + dolfin.Identity(3))
+        F = ufl.variable(ufl.grad(u) + ufl.Identity(3))
         J = ufl.det(F)
         P = self._first_piola(F, v)
 
@@ -302,7 +302,7 @@ class Problem(abc.ABC):
             + (T[2, 2] - T[0, 0]) ** 2
         ) + 3 * (T[0, 1] + T[1, 2] + T[2, 0])
 
-        return dolfin.sqrt(abs(von_Mises_squared))
+        return ufl.sqrt(abs(von_Mises_squared))
 
     @property
     def _gamma(self) -> dolfin.Constant:
@@ -336,7 +336,7 @@ class LVProblem(Problem):
         return self.geometry.markers["ENDO"][0]
 
     def _pressure_term(self, F, w):
-        return dolfin.inner(
+        return ufl.inner(
             self.parameters["p"] * ufl.det(F) * ufl.inv(F).T * self.N,
             w,
         ) * self.ds(
@@ -371,10 +371,10 @@ class BiVProblem(Problem):
         return self.geometry.markers["ENDO_RV"][0]
 
     def _pressure_term(self, F, w):
-        return dolfin.inner(
+        return ufl.inner(
             self.parameters["plv"] * ufl.det(F) * ufl.inv(F).T * self.N,
             w,
-        ) * self.ds(self.endo_lv) + dolfin.inner(
+        ) * self.ds(self.endo_lv) + ufl.inner(
             self.parameters["prv"] * ufl.det(F) * ufl.inv(F).T * self.N,
             w,
         ) * self.ds(

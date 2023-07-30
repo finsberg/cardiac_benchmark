@@ -1,9 +1,8 @@
 """Copied from pulse"""
+import dolfin
 import logging
 import time
 from typing import Tuple
-
-import dolfin
 
 
 logger = logging.getLogger(__name__)
@@ -96,9 +95,9 @@ class NonlinearSolver:
             "linear_solver": linear_solver,
             "preconditioner": "lu",
             "error_on_nonconvergence": False,
-            "relative_tolerance": 1e-5,
-            "absolute_tolerance": 1e-5,
-            "maximum_iterations": 50,
+            "relative_tolerance": 1e-8,
+            "absolute_tolerance": 1e-8,
+            "maximum_iterations": 100,
             "report": False,
             "krylov_solver": {
                 "absolute_tolerance": 1e-10,

@@ -1,6 +1,5 @@
-import typing
-
 import dolfin
+import typing
 import ufl
 
 
@@ -163,9 +162,9 @@ class HolzapfelOgden:
         J = ufl.det(F)
 
         I1 = pow(J, -2 / 3) * dolfin.tr(C)
-        I4f = dolfin.inner(C * self.f0, self.f0)
-        I4s = dolfin.inner(C * self.s0, self.s0)
-        I8fs = dolfin.inner(C * self.f0, self.s0)
+        I4f = dolfin.inner(self.f0, C * self.f0)
+        I4s = dolfin.inner(self.s0, C * self.s0)
+        I8fs = dolfin.inner(self.f0, C * self.s0)
 
         # Compressibility
         Wcompress = self.W_compress(J)

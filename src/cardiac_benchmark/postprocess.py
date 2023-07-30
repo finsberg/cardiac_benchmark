@@ -1,4 +1,10 @@
+import dolfin
+import numpy as np
+import ufl
 import weakref
+from dolfin import FiniteElement  # noqa: F401
+from dolfin import tetrahedron  # noqa: F401
+from dolfin import VectorElement  # noqa: F401
 from pathlib import Path
 from typing import Dict
 from typing import List
@@ -7,14 +13,8 @@ from typing import Optional
 from typing import Tuple
 from typing import Union
 
-import dolfin
 import h5py
 import matplotlib.pyplot as plt
-import numpy as np
-import ufl
-from dolfin import FiniteElement  # noqa: F401
-from dolfin import tetrahedron  # noqa: F401
-from dolfin import VectorElement  # noqa: F401
 
 from .geometry import BiVGeometry
 from .geometry import load_geometry
@@ -271,7 +271,7 @@ class DataLoader:
         if self.geometry.markers is None:
             raise RuntimeError("Cannot load markers")
 
-        self.ds = dolfin.Measure(
+        self.ds = ufl.Measure(
             "exterior_facet",
             domain=mesh,
             subdomain_data=self.geometry.ffun,
@@ -409,13 +409,13 @@ class DataLoader:
         return np.array(us)
 
     def _volume_form(self, u):
-        X = dolfin.SpatialCoordinate(self.geometry.mesh) - self._shift
-        N = dolfin.FacetNormal(self.geometry.mesh)
-        F = dolfin.grad(u) + dolfin.Identity(3)
+        X = ufl.SpatialCoordinate(self.geometry.mesh) - self._shift
+        N = ufl.FacetNormal(self.geometry.mesh)
+        F = ufl.grad(u) + ufl.Identity(3)
 
         u1 = ufl.as_vector([0.0, u[1], 0.0])
         X1 = ufl.as_vector([0.0, X[1], 0.0])
-        return (-1.0 / 1.0) * dolfin.dot(X1 + u1, ufl.cofac(F) * N)
+        return (-1.0 / 1.0) * ufl.dot(X1 + u1, ufl.cofac(F) * N)
 
     def _volume_at_timepoint(self, u, marker):
         return dolfin.assemble(self._volume_form(u) * self.ds(marker))
