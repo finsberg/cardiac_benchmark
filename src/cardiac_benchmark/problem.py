@@ -125,7 +125,7 @@ class Problem(abc.ABC):
 
         return (
             ufl.inner(P, ufl.grad(w)) * ufl.dx
-            - self._pressure_term(F, w)
+            + self._pressure_term(F, w)
             + ufl.inner(epi * w, self.N) * self.ds(self.epi)
             + ufl.inner(top, w) * self.ds(self.top)
         )
