@@ -5,14 +5,14 @@ from typing import Any
 from typing import Dict
 from typing import Optional
 
-import dolfin
+import dolfinx
 
 logger = logging.getLogger(__name__)
 
 
 class ConstantEncoder(json.JSONEncoder):
     def default(self, obj):
-        if isinstance(obj, dolfin.Constant):
+        if isinstance(obj, dolfinx.fem.Constant):
             return float(obj)
         if isinstance(obj, Path):
             return obj.as_posix()
@@ -31,7 +31,7 @@ def _update_parameters(
             logger.warning(f"Invalid key {key}")
             continue
 
-        if isinstance(_par[key], dolfin.Constant):
+        if isinstance(_par[key], dolfinx.fem.Constant):
             _par[key].assign(value)
         else:
             _par[key] = value

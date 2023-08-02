@@ -1,37 +1,41 @@
-import dolfin
 import logging
-import numpy as np
 from pathlib import Path
 from typing import Dict
 from typing import Optional
 from typing import Union
 
+import dolfinx
+import numpy as np
+from mpi4py import MPI
+
 from . import activation_model
-from . import postprocess
 from . import pressure_model
 from .geometry import BiVGeometry
 from .material import HolzapfelOgden
 from .problem import BiVProblem
 from .utils import _update_parameters
 
+# from . import postprocess
+
+
 logger = logging.getLogger(__name__)
 
-dolfin.parameters["form_compiler"]["quadrature_degree"] = 4
-dolfin.parameters["form_compiler"]["cpp_optimize"] = True
-dolfin.parameters["form_compiler"]["representation"] = "uflacs"
-dolfin.parameters["form_compiler"]["optimize"] = True
+# dolfin.parameters["form_compiler"]["quadrature_degree"] = 4
+# dolfin.parameters["form_compiler"]["cpp_optimize"] = True
+# dolfin.parameters["form_compiler"]["representation"] = "uflacs"
+# dolfin.parameters["form_compiler"]["optimize"] = True
 
 
 def solve(
     problem: BiVProblem,
-    tau: dolfin.Constant,
+    tau: dolfinx.fem.Constant,
     activation: np.ndarray,
     lv_pressure: np.ndarray,
     rv_pressure: np.ndarray,
-    plv: dolfin.Constant,
-    prv: dolfin.Constant,
+    plv: dolfinx.fem.Constant,
+    prv: dolfinx.fem.Constant,
     time: np.ndarray,
-    collector: postprocess.DataCollector,
+    collector,  #: postprocess.DataCollector,
     store_freq: int = 1,
 ) -> None:
     """Solve the problem for benchmark 2
@@ -40,7 +44,7 @@ def solve(
     ----------
     problem : BiVProblem
         The problem
-    tau : dolfin.Constant
+    tau : dolfinx.fem.Constant
         Constant in the model representing the activation
     activation : np.ndarray
         An array of activation points
@@ -48,9 +52,9 @@ def solve(
         An array of LV pressure points
     rv_pressure : np.ndarray
         An array of RV pressure points
-    plv : dolfin.Constant
+    plv : dolfinx.fem.Constant
         Constant in the model representing the LV pressure
-    prv : dolfin.Constant
+    prv : dolfinx.fem.Constant
         Constant in the model representing the RV pressure
     time : np.ndarray
         Time stamps
@@ -79,7 +83,7 @@ def solve(
             raise RuntimeError
 
         if i % store_freq == 0:
-            dolfin.info("Store solution")
+            logger.info("Store solution")
             collector.store(t)
 
 
@@ -102,8 +106,8 @@ def run(
     activation_parameters: Optional[Dict[str, float]] = None,
     lv_pressure_parameters: Optional[Dict[str, float]] = None,
     rv_pressure_parameters: Optional[Dict[str, float]] = None,
-    material_parameters: Optional[Dict[str, Union[float, dolfin.Constant]]] = None,
-    problem_parameters: Optional[Dict[str, Union[float, dolfin.Constant]]] = None,
+    material_parameters: Optional[Dict[str, Union[float, dolfinx.fem.Constant]]] = None,
+    problem_parameters: Optional[Dict[str, Union[float, dolfinx.fem.Constant]]] = None,
     outpath: Union[str, Path] = "results_benchmark2.h5",
     T: float = 1.0,
 ):
@@ -119,9 +123,9 @@ def run(
         Parameters for the pressure model in the LV, by default None
     rv_pressure_parameters : Optional[Dict[str, float]], optional
         Parameters for the pressure model in the RV, by default None
-    material_parameters : Optional[Dict[str, Union[float, dolfin.Constant]]], optional
+    material_parameters : Optional[Dict[str, Union[float, dolfinx.fem.Constant]]], optional
         Parameters for the material model, by default None
-    problem_parameters : Optional[Dict[str, Union[float, dolfin.Constant]]], optional
+    problem_parameters : Optional[Dict[str, Union[float, dolfinx.fem.Constant]]], optional
         Parameters for the problem, by default None
     outpath : Union[str, Path], optional
         Path to where to save the results, by default "results.h5"
@@ -160,7 +164,7 @@ def run(
     )
 
     dt = float(problem_parameters["dt"])
-    tau = dolfin.Constant(0.0)
+    tau = dolfinx.fem.Constant(0.0)
     time = np.arange(dt, T, dt)
 
     t_eval = time - float(problem_parameters["alpha_f"]) * dt
@@ -180,7 +184,7 @@ def run(
         parameters=activation_parameters,
     )
 
-    if dolfin.MPI.rank(dolfin.MPI.comm_world) == 0:
+    if MPI.rank(MPI.comm_world) == 0:
         np.save(
             outdir / "pressure_model.npy",
             {
@@ -202,8 +206,8 @@ def run(
             outdir=outdir,
         )
 
-    plv = dolfin.Constant(0.0)
-    prv = dolfin.Constant(0.0)
+    plv = dolfinx.fem.Constant(0.0)
+    prv = dolfinx.fem.Constant(0.0)
     problem_parameters["plv"] = plv
     problem_parameters["prv"] = prv
 

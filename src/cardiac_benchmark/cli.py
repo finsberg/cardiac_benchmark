@@ -7,13 +7,15 @@ from enum import Enum
 from pathlib import Path
 from typing import Optional
 
-import dolfin
+import dolfinx
 import typer
+from mpi4py import MPI
 
 from .geometry import BiVGeometry
 from .geometry import LVGeometry
-from .postprocess import DataLoader
 from .utils import ConstantEncoder
+
+# from .postprocess import DataLoader
 
 
 app = typer.Typer()
@@ -44,7 +46,7 @@ def setup_logging(loglevel=logging.INFO):
             "%(module)s:%(funcName)s:%(lineno)d %(message)s"
         ),
     )
-    dolfin.set_log_level(logging.WARNING)
+    # dolfin.set_log_level(logging.WARNING)
     for module in ["matplotlib", "h5py", "FFC", "UFL"]:
         logger = logging.getLogger(module)
         logger.setLevel(logging.WARNING)
@@ -151,7 +153,7 @@ def benchmark1_step_0_1(
         f"Running benchmark 1 step {step}, "
         f"case {case} with parameters {pprint.pformat(parameters)}",
     )
-    if dolfin.MPI.rank(dolfin.MPI.comm_world) == 0:
+    if MPI.COMM_WORLD.rank == 0:
         logger.info(f"Output will be saved to {outdir}")
         (outdir / "parameters.json").write_text(
             json.dumps(parameters, cls=ConstantEncoder),
@@ -329,7 +331,7 @@ def benchmark2(
     parameters["timestamp"] = datetime.datetime.now().isoformat()
 
     logger.info(f"Running benchmakr 2 with parameters {pprint.pformat(parameters)}")
-    if dolfin.MPI.rank(dolfin.MPI.comm_world) == 0:
+    if MPI.COMM_WORLD.rank == 0:
         logger.info(f"Output will be saved to {outdir}")
         (outdir / "parameters.json").write_text(
             json.dumps(parameters, cls=ConstantEncoder),
@@ -505,28 +507,28 @@ def convert_data_benchmark1(
     if not to_paraview:
         return
 
-    mesh_path = (outdir / "mesh.xdmf").as_posix()
-    logger.info(f"Save mesh to {mesh_path}")
-    with dolfin.XDMFFile(mesh_path) as xdmf:
-        xdmf.write(geo.mesh)
+    # mesh_path = (outdir / "mesh.xdmf").as_posix()
+    # logger.info(f"Save mesh to {mesh_path}")
+    # with dolfinx.io.XDMFFile(mesh_path) as xdmf:
+    #     xdmf.write_mesh(geo.mesh)
 
-    ffun_path = (outdir / "ffun.xdmf").as_posix()
-    logger.info(f"Save ffun to {ffun_path}")
-    with dolfin.XDMFFile(ffun_path) as xdmf:
-        xdmf.write(geo.ffun)
+    # ffun_path = (outdir / "ffun.xdmf").as_posix()
+    # logger.info(f"Save ffun to {ffun_path}")
+    # with dolfinx.io.XDMFFile(ffun_path) as xdmf:
+    #     xdmf.write(geo.ffun)
 
-    microstructure_path = (outdir / "microstructure.xdmf").as_posix()
-    logger.info(f"Save microstructure to {microstructure_path}")
-    with dolfin.XDMFFile(microstructure_path) as xdmf:
-        xdmf.write_checkpoint(geo.f0, "fiber", 0.0, dolfin.XDMFFile.Encoding.HDF5, True)
-        xdmf.write_checkpoint(geo.s0, "sheet", 0.0, dolfin.XDMFFile.Encoding.HDF5, True)
-        xdmf.write_checkpoint(
-            geo.n0,
-            "sheet_normal",
-            0.0,
-            dolfin.XDMFFile.Encoding.HDF5,
-            True,
-        )
+    # microstructure_path = (outdir / "microstructure.xdmf").as_posix()
+    # logger.info(f"Save microstructure to {microstructure_path}")
+    # with dolfin.XDMFFile(microstructure_path) as xdmf:
+    #     xdmf.write_checkpoint(geo.f0, "fiber", 0.0, dolfin.XDMFFile.Encoding.HDF5, True)
+    #     xdmf.write_checkpoint(geo.s0, "sheet", 0.0, dolfin.XDMFFile.Encoding.HDF5, True)
+    #     xdmf.write_checkpoint(
+    #         geo.n0,
+    #         "sheet_normal",
+    #         0.0,
+    #         dolfin.XDMFFile.Encoding.HDF5,
+    #         True,
+    #     )
 
 
 @app.command(help="Convert downloaded data for benchmark 2")

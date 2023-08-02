@@ -1,36 +1,39 @@
-import dolfin
 import logging
-import numpy as np
 from pathlib import Path
 from typing import Dict
 from typing import Optional
 from typing import Union
 
+import dolfinx
+import numpy as np
+from mpi4py import MPI
+
 from . import activation_model
-from . import postprocess
 from . import pressure_model
 from .geometry import LVGeometry
 from .material import HolzapfelOgden
 from .problem import LVProblem
 from .utils import _update_parameters
 
+# from . import postprocess
+
 HERE = Path(__file__).absolute().parent
 logger = logging.getLogger(__name__)
 
-dolfin.parameters["form_compiler"]["quadrature_degree"] = 4
-dolfin.parameters["form_compiler"]["cpp_optimize"] = True
-dolfin.parameters["form_compiler"]["representation"] = "uflacs"
-dolfin.parameters["form_compiler"]["optimize"] = True
+# dolfin.parameters["form_compiler"]["quadrature_degree"] = 4
+# dolfin.parameters["form_compiler"]["cpp_optimize"] = True
+# dolfin.parameters["form_compiler"]["representation"] = "uflacs"
+# dolfin.parameters["form_compiler"]["optimize"] = True
 
 
 def solve(
     problem: LVProblem,
-    tau: dolfin.Constant,
+    tau: dolfinx.fem.Constant,
     activation: np.ndarray,
     pressure: np.ndarray,
-    p: dolfin.Constant,
+    p: dolfinx.fem.Constant,
     time: np.ndarray,
-    collector: postprocess.DataCollector,
+    collector,  #  :postprocess.DataCollector,
     store_freq: int = 1,
 ) -> None:
     """Solve the problem for benchmark 1
@@ -39,13 +42,13 @@ def solve(
     ----------
     problem : LVProblem
         The problem
-    tau : dolfin.Constant
+    tau : dolfinx.fem.Constant
         Constant in the model representing the activation
     activation : np.ndarray
         An array of activation points
     pressure : np.ndarray
         Constant in the model representing the pressure
-    p : dolfin.Constant
+    p : dolfinx.fem.Constant
         An array of pressure points
     time : np.ndarray
         Time stamps
@@ -128,10 +131,10 @@ def default_parameters():
 
 
 def run(
-    problem_parameters: Optional[Dict[str, Union[float, dolfin.Constant]]] = None,
+    problem_parameters: Optional[Dict[str, Union[float, dolfinx.fem.Constant]]] = None,
     activation_parameters: Optional[Dict[str, float]] = None,
     pressure_parameters: Optional[Dict[str, float]] = None,
-    material_parameters: Optional[Dict[str, Union[float, dolfin.Constant]]] = None,
+    material_parameters: Optional[Dict[str, Union[float, dolfinx.fem.Constant]]] = None,
     mesh_parameters: Optional[Dict[str, float]] = None,
     fiber_parameters: Optional[Dict[str, Union[float, str]]] = None,
     zero_pressure: bool = False,
@@ -143,13 +146,13 @@ def run(
 
     Parameters
     ----------
-    problem_parameters : Optional[Dict[str, Union[float, dolfin.Constant]]], optional
+    problem_parameters : Optional[Dict[str, Union[float, dolfinx.fem.Constant]]], optional
         Parameters for the problem, by default None
     activation_parameters : Optional[Dict[str, float]], optional
         Parameters for the activation model, by default None
     pressure_parameters : Optional[Dict[str, float]], optional
         Parameters for the pressure model, by default None
-    material_parameters : Optional[Dict[str, Union[float, dolfin.Constant]]], optional
+    material_parameters : Optional[Dict[str, Union[float, dolfinx.fem.Constant]]], optional
         Parameters for the material model, by default None
     mesh_parameters : Optional[Dict[str, float]], optional
         Parameters for the mesh, by default None
@@ -196,9 +199,30 @@ def run(
         LVGeometry.default_fiber_parameters(),
         fiber_parameters,
     )
+    data_folder = Path(geometry_path)
+    fiberdir = data_folder / "fibers" / "p2"
+    mesh_file = data_folder / "ellipsoid_0.005.xdmf"
+    assert mesh_file.is_file(), f"Missing {mesh_file}"
+    fiber_file = fiberdir / "ellipsoid_fiber.h5"
+    assert fiber_file.is_file(), f"Missing {fiber_file}"
+    sheet_file = fiberdir / "ellipsoid_sheet.h5"
+    assert sheet_file.is_file(), f"Missing {sheet_file}"
+    sheet_normal_file = fiberdir / "ellipsoid_sheet_normal.h5"
+    assert sheet_normal_file.is_file(), f"Missing {sheet_normal_file}"
 
+    if outdir is None:
+        outdir = data_folder
+
+    outdir.mkdir(exist_ok=True, parents=True)
+    logger.info(f"Load geometry from {data_folder}")
+    geo = LVGeometry.from_files(
+        mesh_file=mesh_file,
+        fiber_file=fiber_file,
+        sheet_file=sheet_file,
+        sheet_normal_file=sheet_normal_file,
+    )
     dt = float(problem_parameters["dt"])
-    tau = dolfin.Constant(0.0)
+    tau = dolfinx.fem.Constant(geo.mesh, 0.0)
     time = np.arange(dt, 1, dt)
 
     t_eval = time - float(problem_parameters["alpha_f"]) * dt
@@ -219,7 +243,7 @@ def run(
     if zero_activation:
         activation[:] = 0.0
 
-    if dolfin.MPI.rank(dolfin.MPI.comm_world) == 0:
+    if geo.mesh.comm.rank == 0:
         np.save(
             outdir / "pressure_model.npy",
             {
@@ -231,21 +255,21 @@ def run(
             },
         )
 
-        postprocess.plot_activation_pressure_function(
-            t=time,
-            activation=activation,
-            lv_pressure=pressure,
-            outdir=outdir,
-        )
+        # postprocess.plot_activation_pressure_function(
+        #     t=time,
+        #     activation=activation,
+        #     lv_pressure=pressure,
+        #     outdir=outdir,
+        # )
 
-    p = dolfin.Constant(0.0)
+    p = dolfinx.fem.Constant(geo.mesh, 0.0)
     problem_parameters["p"] = p
 
-    geo = get_geometry(
-        path=Path(geometry_path),
-        fiber_parameters=fiber_parameters,
-        mesh_parameters=mesh_parameters,
-    )
+    # geo = get_geometry(
+    #     path=Path(geometry_path),
+    #     fiber_parameters=fiber_parameters,
+    #     mesh_parameters=mesh_parameters,
+    # )
     material = HolzapfelOgden(
         f0=geo.f0,
         s0=geo.s0,

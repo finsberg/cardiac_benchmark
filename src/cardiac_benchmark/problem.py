@@ -9,16 +9,20 @@ For time integration we employ the generalized :math:`\alpha`-method [1]_.
         Springer Verlag, 2002, 28, pp.83-104, doi:10.1007/s00466-001-0273-z
 """
 import abc
-import dolfin
 import typing
+
+import dolfinx.fem.petsc
+import dolfinx.nls.petsc
 import ufl
 
 from .geometry import HeartGeometry
 from .material import HolzapfelOgden
-from .solver import NonlinearProblem
-from .solver import NonlinearSolver
 
-T = typing.TypeVar("T", dolfin.Function, dolfin.Vector)
+# from .solver import NonlinearProblem
+# from .solver import NonlinearSolver
+
+# T = typing.TypeVar("T", dolfin.Function, dolfin.Vector)
+T = dolfinx.fem.Function
 
 
 def interpolate(x0: T, x1: T, alpha: float):
@@ -47,9 +51,7 @@ class Problem(abc.ABC):
         self,
         geometry: HeartGeometry,
         material: HolzapfelOgden,
-        parameters: typing.Optional[
-            typing.Dict[str, typing.Union[dolfin.Constant, str]]
-        ] = None,
+        parameters: typing.Optional[typing.Dict[str, typing.Union[float, str]]] = None,
         solver_parameters=None,
     ) -> None:
         """Constructor
@@ -60,7 +62,7 @@ class Problem(abc.ABC):
             The geometry
         material : HolzapfelOgden
             The material
-        parameters : typing.Dict[str, Union[dolfin.Constant, str], optional
+        parameters : typing.Dict[str, Union[float, str], optional
             Problem parameters, by default None. See
             `Problem.default_parameters`
         """
@@ -72,9 +74,9 @@ class Problem(abc.ABC):
         self.parameters = type(self).default_parameters()
         self.parameters.update(parameters)
 
-        self.solver_parameters = NonlinearSolver.default_solver_parameters()
-        if solver_parameters is not None:
-            self.solver_parameters.update(**solver_parameters)
+        # self.solver_parameters = NonlinearSolver.default_solver_parameters()
+        # if solver_parameters is not None:
+        # self.solver_parameters.update(**solver_parameters)
         self._init_spaces()
         self._init_forms()
 
@@ -89,20 +91,20 @@ class Problem(abc.ABC):
 
         family, degree = self.parameters["function_space"].split("_")
 
-        element = dolfin.VectorElement(family, mesh.ufl_cell(), int(degree))
-        self.u_space = dolfin.FunctionSpace(mesh, element)
-        self.u = dolfin.Function(self.u_space)
-        self.u_test = dolfin.TestFunction(self.u_space)
-        self.du = dolfin.TrialFunction(self.u_space)
+        element = ufl.VectorElement(family, mesh.ufl_cell(), int(degree))
+        self.u_space = dolfinx.fem.FunctionSpace(mesh, element)
+        self.u = dolfinx.fem.Function(self.u_space)
+        self.u_test = ufl.TestFunction(self.u_space)
+        # self.du = ufl.TrialFunction(self.u_space)
 
-        self.u_old = dolfin.Function(self.u_space)
-        self.v_old = dolfin.Function(self.u_space)
-        self.a_old = dolfin.Function(self.u_space)
+        self.u_old = dolfinx.fem.Function(self.u_space)
+        self.v_old = dolfinx.fem.Function(self.u_space)
+        self.a_old = dolfinx.fem.Function(self.u_space)
 
-    def _acceleration_form(self, a: dolfin.Function, w: dolfin.TestFunction):
+    def _acceleration_form(self, a: dolfinx.fem.Function, w: ufl.TestFunction):
         return ufl.inner(self.parameters["rho"] * a, w) * ufl.dx
 
-    def _first_piola(self, F: ufl.Coefficient, v: dolfin.Function):
+    def _first_piola(self, F: ufl.Coefficient, v: dolfinx.fem.Function):
 
         F_dot = ufl.grad(v)
         l = F_dot * ufl.inv(F)  # Holzapfel eq: 2.139
@@ -114,7 +116,12 @@ class Problem(abc.ABC):
             E_dot,
         )
 
-    def _form(self, u: dolfin.Function, v: dolfin.Function, w: dolfin.TestFunction):
+    def _form(
+        self,
+        u: dolfinx.fem.Function,
+        v: dolfinx.fem.Function,
+        w: ufl.TestFunction,
+    ):
         F = ufl.variable(ufl.grad(u) + ufl.Identity(3))
         P = self._first_piola(F, v)
         epi = ufl.dot(self.parameters["alpha_epi"] * u, self.N) + ufl.dot(
@@ -169,7 +176,7 @@ class Problem(abc.ABC):
         u_old,
         v_old,
         a_old,
-    ) -> typing.Union[dolfin.Function, dolfin.Vector]:
+    ) -> dolfinx.fem.Function:
         r"""
         Acceleration computed using the generalized
         :math:`alpha`-method
@@ -255,18 +262,32 @@ class Problem(abc.ABC):
             interpolate(self.v_old, v_new, alpha_f),
             w,
         )
-        jacobian = ufl.derivative(
+        # jacobian = ufl.derivative(
+        #     virtual_work,
+        #     self.u,
+        #     self.du,
+        # )
+
+        self._problem = dolfinx.fem.petsc.NonlinearProblem(
             virtual_work,
             self.u,
-            self.du,
+            [],
         )
-
-        self._problem = NonlinearProblem(J=jacobian, F=virtual_work, bcs=[])
-        self.solver = NonlinearSolver(
+        self.solver = dolfinx.nls.petsc.NewtonSolver(
+            self.geometry.mesh.comm,
             self._problem,
-            self.u,
-            parameters=self.solver_parameters,
         )
+        # TODO: Make it possible for the user to set this
+        self.solver.atol = 1e-8
+        self.solver.rtol = 1e-8
+        self.solver.convergence_criterion = "incremental"
+
+        # self._problem = NonlinearProblem(J=jacobian, F=virtual_work, bcs=[])
+        # self.solver = NonlinearSolver(
+        #     self._problem,
+        #     self.u,
+        #     parameters=self.solver_parameters,
+        # )
 
     def von_Mises(self) -> ufl.Coefficient:
         r"""Compute the von Mises stress tensor :math`\sigma_v`, with
@@ -305,16 +326,14 @@ class Problem(abc.ABC):
         return ufl.sqrt(abs(von_Mises_squared))
 
     @property
-    def _gamma(self) -> dolfin.Constant:
+    def _gamma(self) -> float:
         """Parameter in the generalized alpha-method"""
-        return dolfin.Constant(
-            0.5 + self.parameters["alpha_f"] - self.parameters["alpha_m"],
-        )
+        return 0.5 + self.parameters["alpha_f"] - self.parameters["alpha_m"]
 
     @property
-    def _beta(self) -> dolfin.Constant:
+    def _beta(self) -> float:
         """Parameter in the generalized alpha-method"""
-        return dolfin.Constant((self._gamma + 0.5) ** 2 / 4.0)
+        return (self._gamma + 0.5) ** 2 / 4.0
 
     def solve(self) -> bool:
         """Solve the system"""
@@ -344,17 +363,17 @@ class LVProblem(Problem):
         )
 
     @staticmethod
-    def default_parameters() -> typing.Dict[str, dolfin.Constant]:
+    def default_parameters() -> typing.Dict[str, float]:
         return dict(
-            alpha_top=dolfin.Constant(1e5),
-            alpha_epi=dolfin.Constant(1e8),
-            beta_top=dolfin.Constant(5e3),
-            beta_epi=dolfin.Constant(5e3),
-            p=dolfin.Constant(0.0),
-            rho=dolfin.Constant(1e3),
-            dt=dolfin.Constant(1e-3),
-            alpha_m=dolfin.Constant(0.2),
-            alpha_f=dolfin.Constant(0.4),
+            alpha_top=1e5,
+            alpha_epi=1e8,
+            beta_top=5e3,
+            beta_epi=5e3,
+            p=0.0,
+            rho=1e3,
+            dt=1e-3,
+            alpha_m=0.2,
+            alpha_f=0.4,
             function_space="P_2",
         )
 
@@ -382,17 +401,17 @@ class BiVProblem(Problem):
         )
 
     @staticmethod
-    def default_parameters() -> typing.Dict[str, dolfin.Constant]:
+    def default_parameters() -> typing.Dict[str, float]:
         return dict(
-            alpha_top=dolfin.Constant(1e6),
-            alpha_epi=dolfin.Constant(1e8),
-            beta_top=dolfin.Constant(5e3),
-            beta_epi=dolfin.Constant(5e3),
-            plv=dolfin.Constant(0.0),
-            prv=dolfin.Constant(0.0),
-            rho=dolfin.Constant(1e3),
-            dt=dolfin.Constant(1e-3),
-            alpha_m=dolfin.Constant(0.2),
-            alpha_f=dolfin.Constant(0.4),
+            alpha_top=1e6,
+            alpha_epi=1e8,
+            beta_top=5e3,
+            beta_epi=5e3,
+            plv=0.0,
+            prv=0.0,
+            rho=1e3,
+            dt=1e-3,
+            alpha_m=0.2,
+            alpha_f=0.4,
             function_space="P_2",
         )

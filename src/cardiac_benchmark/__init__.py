@@ -11,12 +11,14 @@ from . import utils
 from . import cli
 from . import geometry
 from . import material
-from . import microstructure
-from . import postprocess
+
+# from . import microstructure
+# from . import postprocess
 from . import pressure_model
 from . import activation_model
 from . import problem
-from . import solver
+
+# from . import solver
 
 meta = importlib_metadata.metadata("cardiac-benchmark")
 __version__ = meta["Version"]
@@ -33,10 +35,10 @@ __all__ = [
     "cli",
     "geometry",
     "material",
-    "microstructure",
-    "postprocess",
+    # "microstructure",
+    # "postprocess",
     "pressure_model",
     "problem",
-    "solver",
+    # "solver",
     "activation_model",
 ]

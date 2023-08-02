@@ -6,10 +6,10 @@ name = "cardiac-benchmark"
 version = "0.3.0"
 description = "Cardiac benchmark by Simula Research Laboratory"
 authors = [
-    {name = "Henrik Finsberg", email = "henriknf@simula.no"},
-    {name = "Joakim Sundnes", email = "sundnes@simula.no"}
+    { name = "Henrik Finsberg", email = "henriknf@simula.no" },
+    { name = "Joakim Sundnes", email = "sundnes@simula.no" },
 ]
-license = {file = "LICENSE"}
+license = { file = "LICENSE" }
 readme = "README.md"
 requires-python = ">=3.7"
 dependencies = [
@@ -18,33 +18,22 @@ dependencies = [
     "numpy",
     "matplotlib",
     "scipy",
-    "h5py",
-    "meshio",
-    "importlib-metadata; python_version < '3.8'"
+    # "h5py",
+    # "meshio",
+    "importlib-metadata; python_version < '3.8'",
 ]
 
 [project.scripts]
 cardiac-benchmark = "cardiac_benchmark.cli:app"
 
 [project.optional-dependencies]
-test = [
-    "pytest",
-    "pytest-cov",
-]
-dev = [
-    "pdbpp",
-    "ipython",
-    "bump2version",
-    "pre-commit",
-]
-docs = [
-   "jupyter-book",
-   "ipython!=8.7.0"
-]
+test = ["pytest", "pytest-cov"]
+dev = ["pdbpp", "ipython", "bump2version", "pre-commit"]
+docs = ["jupyter-book", "ipython!=8.7.0"]
 all = [
-   "cardiac-benchmark[test]",
-   "cardiac-benchmark[docs]",
-   "cardiac-benchmark[dev]"
+    "cardiac-benchmark[test]",
+    "cardiac-benchmark[docs]",
+    "cardiac-benchmark[dev]",
 ]
 
 [tool.setuptools.packages.find]
@@ -53,12 +42,10 @@ where = ["src"]
 
 [tool.pytest.ini_options]
 addopts = [
-   "--cov=cardiac_benchmark",
-   "--cov-report=html",
-   "--cov-report=term-missing",
-   "-v"
+    "--cov=cardiac_benchmark",
+    "--cov-report=html",
+    "--cov-report=term-missing",
+    "-v",
 ]
 
-testpaths = [
-    "tests"
-]
+testpaths = ["tests"]

@@ -1,7 +1,6 @@
 import abc
 import logging
 import math
-import warnings
 from collections import namedtuple
 from pathlib import Path
 from typing import Dict
@@ -9,22 +8,28 @@ from typing import Optional
 from typing import Tuple
 from typing import Union
 
-import dolfin
+import dolfinx
+import ufl
+from adios4dolfinx import read_function_from_legacy_h5
+from adios4dolfinx import read_mesh_from_legacy_h5
+from mpi4py import MPI
 
-try:
-    import gmsh
-except ImportError:
-    warnings.warn("gmsh not installed - mesh generation not possible")
-    hash_gmsh = False
-else:
-    hash_gmsh = True
-import h5py
-import meshio
-from dolfin import FiniteElement  # noqa: F401
-from dolfin import tetrahedron  # noqa: F401
-from dolfin import VectorElement  # noqa: F401
+# import warnings
 
-from .microstructure import create_microstructure
+# try:
+#     import gmsh
+# except ImportError:
+#     warnings.warn("gmsh not installed - mesh generation not possible")
+#     hash_gmsh = False
+# else:
+#     hash_gmsh = True
+# import h5py
+# import meshio
+# from dolfin import FiniteElement  # noqa: F401
+# from dolfin import tetrahedron  # noqa: F401
+# from dolfin import VectorElement  # noqa: F401
+
+# from .microstructure import create_microstructure
 
 GmshGeometry = namedtuple(
     "GmshGeometry",
@@ -266,19 +271,19 @@ def save_geometry(fname, geo: "HeartGeometry") -> None:
         logger.info(f"File {fname} already exists. Remove existing file")
         fname.unlink()
 
-    mpi_comm = dolfin.MPI.comm_world
-    if geo.mesh is not None:
-        mpi_comm = geo.mesh.mpi_comm()
-    with dolfin.HDF5File(mpi_comm, fname.as_posix(), "w") as h5file:
-        for attr in ["mesh", "cfun", "ffun", "efun", "vfun", "f0", "s0", "n0"]:
-            obj = getattr(geo, attr, None)
-            if obj is None:
-                continue
+    # mpi_comm = MPI.comm_world
+    # if geo.mesh is not None:
+    #     mpi_comm = geo.mesh.comm
+    # with dolfin.HDF5File(mpi_comm, fname.as_posix(), "w") as h5file:
+    #     for attr in ["mesh", "cfun", "ffun", "efun", "vfun", "f0", "s0", "n0"]:
+    #         obj = getattr(geo, attr, None)
+    #         if obj is None:
+    #             continue
 
-            h5file.write(obj, attr)
-        if geo.markers is not None:
-            for name, (marker, dim) in geo.markers.items():
-                h5file.attributes("mesh")[name] = f"{marker}_{dim}"
+    #         h5file.write(obj, attr)
+    #     if geo.markers is not None:
+    #         for name, (marker, dim) in geo.markers.items():
+    #             h5file.attributes("mesh")[name] = f"{marker}_{dim}"
 
 
 def load_geometry(fname) -> "HeartGeometry":
@@ -291,28 +296,28 @@ def load_geometry(fname) -> "HeartGeometry":
     element = None  # type: ignore
     markers: Dict[str, Tuple[int, int]] = {}
 
-    if mesh.mpi_comm().rank == 0:
+    if mesh.comm.rank == 0:
         with h5py.File(fname, "r") as h5file:
             element = eval(h5file["f0"].attrs["signature"])
             for k, v in h5file["mesh"].attrs.items():
                 v_split = v.decode().split("_")
                 markers[k] = (int(v_split[0]), int(v_split[1]))
 
-    element = mesh.mpi_comm().bcast(element, root=0)
-    markers = mesh.mpi_comm().bcast(markers, root=0)
+    element = mesh.comm.bcast(element, root=0)
+    markers = mesh.comm.bcast(markers, root=0)
 
-    with dolfin.HDF5File(mesh.mpi_comm(), fname.as_posix(), "r") as h5file:
+    with dolfin.HDF5File(mesh.comm, fname.as_posix(), "r") as h5file:
         h5file.read(mesh, "mesh", False)
         ffun = dolfin.MeshFunction("size_t", mesh, 2)
         h5file.read(ffun, "ffun")
 
         element._quad_scheme = "default"
-        V = dolfin.FunctionSpace(mesh, element)
-        f0 = dolfin.Function(V)
+        V = dolfinx.fem.FunctionSpace(mesh, element)
+        f0 = dolfinx.fem.Function(V)
         h5file.read(f0, "f0")
-        s0 = dolfin.Function(V)
+        s0 = dolfinx.fem.Function(V)
         h5file.read(s0, "s0")
-        n0 = dolfin.Function(V)
+        n0 = dolfinx.fem.Function(V)
         h5file.read(n0, "n0")
 
     cls = BiVGeometry if "ENDO_RV" in markers else LVGeometry
@@ -329,21 +334,15 @@ def load_geometry(fname) -> "HeartGeometry":
 class HeartGeometry(abc.ABC):
     def __init__(
         self,
-        mesh: Optional[dolfin.Mesh] = None,
-        cfun: Optional[dolfin.MeshFunction] = None,
-        ffun: Optional[dolfin.MeshFunction] = None,
-        efun: Optional[dolfin.MeshFunction] = None,
-        vfun: Optional[dolfin.MeshFunction] = None,
+        mesh: Optional[dolfinx.mesh.Mesh] = None,
+        ffun: Optional[dolfinx.mesh.MeshTags] = None,
         markers: Optional[Dict[str, Tuple[int, int]]] = None,
-        f0: Optional[dolfin.Function] = None,
-        s0: Optional[dolfin.Function] = None,
-        n0: Optional[dolfin.Function] = None,
+        f0: Optional[dolfinx.fem.Function] = None,
+        s0: Optional[dolfinx.fem.Function] = None,
+        n0: Optional[dolfinx.fem.Function] = None,
     ):
         self.mesh = mesh
-        self.cfun = cfun
         self.ffun = ffun
-        self.efun = efun
-        self.vfun = vfun
         self.f0 = f0
         self.s0 = s0
         self.n0 = n0
@@ -411,48 +410,29 @@ class HeartGeometry(abc.ABC):
 
     @staticmethod
     def load_microstructure(mesh, fiber_file, sheet_file, sheet_normal_file):
-        # Load signatures on root process
-        signatures = {}
-        if mesh.mpi_comm().rank == 0:
-            with h5py.File(fiber_file, "r") as f:
-                signatures["fiber"] = eval(f["fiber"].attrs["signature"].decode())
-            with h5py.File(sheet_file, "r") as f:
-                signatures["sheet"] = eval(f["sheet"].attrs["signature"].decode())
-            with h5py.File(sheet_normal_file, "r") as f:
-                signatures["sheet_normal"] = eval(
-                    f["sheet_normal"].attrs["signature"].decode(),
-                )
-        # Broadcast to the other processes
-        signatures = mesh.mpi_comm().bcast(signatures, root=0)
-        signatures = signatures
 
         # Create functions and load them
-        f0 = dolfin.Function(dolfin.FunctionSpace(mesh, signatures["fiber"]))
-        with dolfin.HDF5File(
-            mesh.mpi_comm(),
-            fiber_file.as_posix(),
-            "r",
-        ) as f:
-            f.read(f0, "fiber")
+        element = ufl.VectorElement("P", mesh.ufl_cell(), 2)
+        V = dolfinx.fem.FunctionSpace(mesh, element)
+        f0 = dolfinx.fem.Function(V)
 
-        s0 = dolfin.Function(dolfin.FunctionSpace(mesh, signatures["sheet"]))
-        with dolfin.HDF5File(
-            mesh.mpi_comm(),
-            sheet_file.as_posix(),
-            "r",
-        ) as f:
-            f.read(s0, "sheet")
+        import h5py
 
-        n0 = dolfin.Function(
-            dolfin.FunctionSpace(mesh, signatures["sheet_normal"]),
+        with h5py.File(fiber_file, "r") as f:
+            breakpoint()
+
+        read_function_from_legacy_h5(mesh.comm, fiber_file, f0, group="fiber")
+
+        s0 = dolfinx.fem.Function(V)
+        read_function_from_legacy_h5(mesh.comm, sheet_file, s0, "sheet")
+
+        n0 = dolfinx.fem.Function(V)
+        read_function_from_legacy_h5(
+            mesh.comm,
+            sheet_normal_file,
+            n0,
+            group="sheet_normal",
         )
-        with dolfin.HDF5File(
-            mesh.mpi_comm(),
-            sheet_normal_file.as_posix(),
-            "r",
-        ) as f:
-            f.read(n0, "sheet_normal")
-
         return (f0, s0, n0)
 
     def save(self, fname: Union[str, Path]) -> None:
@@ -481,12 +461,86 @@ class LVGeometry(HeartGeometry):
 
     @staticmethod
     def load_mesh(mesh_file):
-        mesh = dolfin.Mesh()
-        ffun_val = dolfin.MeshValueCollection("size_t", mesh, 2)
-        with dolfin.XDMFFile(mesh.mpi_comm(), mesh_file.as_posix()) as f:
-            f.read(mesh)
-            f.read(ffun_val)
-        ffun = dolfin.MeshFunction("size_t", mesh, ffun_val)
+
+        import adios4dolfinx
+        import adios2
+        import numpy as np
+
+        comm = MPI.COMM_WORLD
+
+        # Mesh file in XDMF
+        with dolfinx.io.XDMFFile(comm, mesh_file, "r") as xdmf:
+            mesh = xdmf.read_mesh(name="mesh")
+
+        mesh.topology.create_connectivity(mesh.topology.dim, mesh.topology.dim - 1)
+
+        adios = adios2.ADIOS(mesh.comm)
+        io_name = "ReadMeshFunction"
+        io = adios.DeclareIO(io_name)
+        io.SetEngine("HDF5")
+        # Read the corresponding H5File
+        file = io.Open(str(mesh_file.with_suffix(".h5")), adios2.Mode.Read)
+        file.BeginStep()
+        in_topology = io.InquireVariable("/MeshFunction/0/mesh/topology")
+        shape = in_topology.Shape()
+        local_cell_range = adios4dolfinx.comm_helpers.compute_local_range(
+            comm,
+            shape[0],
+        )
+
+        in_topology.SetSelection(
+            [
+                [local_cell_range[0], 0],
+                [local_cell_range[1] - local_cell_range[0], shape[1]],
+            ],
+        )
+        topology = np.empty(
+            (local_cell_range[1] - local_cell_range[0], shape[1]),
+            dtype=in_topology.Type().strip("_t"),
+        )
+        file.Get(in_topology, topology, adios2.Mode.Sync)
+
+        in_values = io.InquireVariable("/MeshFunction/0/values")
+        values = np.empty(
+            local_cell_range[1] - local_cell_range[0],
+            dtype=in_values.Type().strip("_t"),
+        )
+        in_values.SetSelection(
+            [[local_cell_range[0], 0], [local_cell_range[1] - local_cell_range[0], 1]],
+        )
+
+        file.Get(in_values, values, adios2.Mode.Sync)
+
+        file.EndStep()
+        file.Close()
+        adios.RemoveIO(io_name)
+
+        values = values.astype(np.int32)
+        local_entities, local_values = dolfinx.io.utils.distribute_entity_data(
+            mesh,
+            mesh.topology.dim - 1,
+            topology,
+            values,
+        )
+        adj = dolfinx.cpp.graph.AdjacencyList_int32(local_entities)
+
+        ffun = dolfinx.mesh.meshtags_from_entities(
+            mesh,
+            mesh.topology.dim - 1,
+            adj,
+            local_values.astype(np.int32, copy=False),
+        )
+        ffun.name = "Facet tags"
+
+        # mesh.topology.create_connectivity(mesh.topology.dim - 1, mesh.topology.dim)
+        # with dolfinx.io.XDMFFile(mesh.comm, "ffun.xdmf", "w") as xdmf:
+        #     xdmf.write_mesh(mesh)
+        #     xdmf.write_meshtags(ffun, mesh.geometry)
+
+        # exit()
+        #     f.read(mesh)
+        #     f.read(ffun_val)
+        # ffun = dolfin.MeshFunction("size_t", mesh, ffun_val)
 
         # Hardcode markers from file
         markers = {
@@ -597,7 +651,7 @@ class BiVGeometry(HeartGeometry):
     def load_mesh(mesh_file):
         mesh = dolfin.Mesh()
         ffun_val = dolfin.MeshValueCollection("size_t", mesh, 2)
-        with dolfin.XDMFFile(mesh.mpi_comm(), mesh_file.as_posix()) as f:
+        with dolfin.XDMFFile(mesh.comm, mesh_file.as_posix()) as f:
             f.read(mesh)
             f.read(ffun_val)
         ffun = dolfin.MeshFunction("size_t", mesh, ffun_val)

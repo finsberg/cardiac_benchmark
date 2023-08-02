@@ -1,11 +1,12 @@
-import dolfin
 import typing
+
+import dolfinx
 import ufl
 
 
 def heaviside(
     x: ufl.Coefficient,
-    k: dolfin.Constant,
+    k: float,
     use_exp: bool = True,
 ) -> ufl.Coefficient:
     r"""
@@ -21,9 +22,9 @@ def heaviside(
     """
 
     if use_exp:
-        return 1 / (1 + dolfin.exp(-k * (x - 1)))
+        return 1 / (1 + ufl.exp(-k * (x - 1)))
     else:
-        return dolfin.conditional(dolfin.ge(x, 0.0), 1.0, 0.0)
+        return ufl.conditional(ufl.ge(x, 0.0), 1.0, 0.0)
 
 
 class HolzapfelOgden:
@@ -32,11 +33,11 @@ class HolzapfelOgden:
 
     Parameters
     ----------
-    f0: dolfin.Function
+    f0: dolfinx.fem.Function
         Function representing the direction of the fibers
-    s0: dolfin.Function
+    s0: dolfinx.fem.Function
         Function representing the direction of the sheets
-    tau: dolfin.Constant
+    tau: dolfinx.fem.Constant
         The active stress
     parameters: Dict[str, float]
         Dictionary with material parameters
@@ -83,10 +84,10 @@ class HolzapfelOgden:
 
     def __init__(
         self,
-        f0: dolfin.Function,
-        s0: dolfin.Function,
-        tau: dolfin.Constant = dolfin.Constant(0.0),
-        parameters: typing.Optional[typing.Dict[str, dolfin.Constant]] = None,
+        f0: dolfinx.fem.Function,
+        s0: dolfinx.fem.Function,
+        tau: dolfinx.fem.Constant,
+        parameters: typing.Optional[typing.Dict[str, float]] = None,
     ) -> None:
         parameters = parameters or {}
         self.parameters = HolzapfelOgden.default_parameters()
@@ -97,26 +98,26 @@ class HolzapfelOgden:
         self.tau = tau
 
     @staticmethod
-    def default_parameters() -> typing.Dict[str, dolfin.Constant]:
+    def default_parameters() -> typing.Dict[str, float]:
         return {
-            "a": dolfin.Constant(59.0),
-            "b": dolfin.Constant(8.023),
-            "a_f": dolfin.Constant(18472.0),
-            "b_f": dolfin.Constant(16.026),
-            "a_s": dolfin.Constant(2481.0),
-            "b_s": dolfin.Constant(11.120),
-            "a_fs": dolfin.Constant(216.0),
-            "b_fs": dolfin.Constant(11.436),
-            "kappa": dolfin.Constant(1e6),
-            "eta": dolfin.Constant(1e2),
-            "k": dolfin.Constant(100.0),
+            "a": 59.0,
+            "b": 8.023,
+            "a_f": 18472.0,
+            "b_f": 16.026,
+            "a_s": 2481.0,
+            "b_s": 11.120,
+            "a_fs": 216.0,
+            "b_fs": 11.436,
+            "kappa": 1e6,
+            "eta": 1e2,
+            "k": 100.0,
         }
 
     def W_1(self, I1):
         a = self.parameters["a"]
         b = self.parameters["b"]
 
-        return a / (2.0 * b) * (dolfin.exp(b * (I1 - 3)) - 1.0)
+        return a / (2.0 * b) * (ufl.exp(b * (I1 - 3)) - 1.0)
 
     def W_4(self, I4, direction):
         assert direction in ["f", "s"]
@@ -127,7 +128,7 @@ class HolzapfelOgden:
             a
             / (2.0 * b)
             * heaviside(I4, k=self.parameters["k"])
-            * (dolfin.exp(b * (I4 - 1) ** 2) - 1.0)
+            * (ufl.exp(b * (I4 - 1) ** 2) - 1.0)
         )
 
     def W_8(self, I8):
@@ -137,20 +138,20 @@ class HolzapfelOgden:
         a = self.parameters["a_fs"]
         b = self.parameters["b_fs"]
 
-        return a / (2.0 * b) * (dolfin.exp(b * I8**2) - 1.0)
+        return a / (2.0 * b) * (ufl.exp(b * I8**2) - 1.0)
 
     def W_compress(self, J):
         """
         Compressibility contribution
         """
-        return 0.25 * self.parameters["kappa"] * (J**2 - 1 - 2 * dolfin.ln(J))
+        return 0.25 * self.parameters["kappa"] * (J**2 - 1 - 2 * ufl.ln(J))
 
     def W_visco(self, E_dot):
         """Viscoelastic contributions"""
-        return 0.5 * self.parameters["eta"] * dolfin.tr(E_dot * E_dot)
+        return 0.5 * self.parameters["eta"] * ufl.tr(E_dot * E_dot)
 
     def Wactive(self, I4f):
-        return dolfin.Constant(0.5) * self.tau * (I4f - 1)
+        return 0.5 * self.tau * (I4f - 1)
 
     def strain_energy(self, F):
         """
@@ -161,10 +162,11 @@ class HolzapfelOgden:
         C = F.T * F
         J = ufl.det(F)
 
-        I1 = pow(J, -2 / 3) * dolfin.tr(C)
-        I4f = dolfin.inner(self.f0, C * self.f0)
-        I4s = dolfin.inner(self.s0, C * self.s0)
-        I8fs = dolfin.inner(self.f0, C * self.s0)
+        I1 = pow(J, -2 / 3) * ufl.tr(C)
+        breakpoint()
+        I4f = ufl.inner(self.f0, C * self.f0)
+        I4s = ufl.inner(self.s0, C * self.s0)
+        I8fs = ufl.inner(self.f0, C * self.s0)
 
         # Compressibility
         Wcompress = self.W_compress(J)
