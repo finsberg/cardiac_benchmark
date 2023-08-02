@@ -16,7 +16,7 @@ from .utils import _update_parameters
 
 logger = logging.getLogger(__name__)
 
-dolfin.parameters["form_compiler"]["quadrature_degree"] = 4
+dolfin.parameters["form_compiler"]["quadrature_degree"] = 6
 dolfin.parameters["form_compiler"]["cpp_optimize"] = True
 dolfin.parameters["form_compiler"]["representation"] = "uflacs"
 dolfin.parameters["form_compiler"]["optimize"] = True
