@@ -564,7 +564,7 @@ class LVGeometry(HeartGeometry):
     @staticmethod
     def default_fiber_parameters() -> Dict[str, Union[float, str]]:
         return dict(
-            function_space="Quadrature_4",
+            function_space="P_2",
             alpha_endo=-60.0,
             alpha_epi=+60.0,
         )

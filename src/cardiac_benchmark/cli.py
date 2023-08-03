@@ -593,7 +593,7 @@ def create_geometry(
     path: Path,
     alpha_endo: float = -60.0,
     alpha_epi: float = 60.0,
-    function_space: str = "Quadrature_4",
+    function_space: str = "P_2",
     mesh_size_factor: float = 1.0,
 ):
     geo = LVGeometry.from_parameters(
