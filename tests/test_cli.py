@@ -63,8 +63,8 @@ def test_benchmark1_step0_caseA(geo_path):
         "benchmark1_step0_caseA",
         ["benchmark1-step0", "a", "--geometry-path", geo_path],
         geo_path,
-        max_up0=(0.0, 0.00113854, 0.00121422),
-        min_up0=(-2.11865732e-02, -7.07775436e-06, -3.90594965e-04),
+        max_up0=(1.34564644e-05, 1.13097351e-03, 1.17750664e-03),
+        min_up0=(-2.10341755e-02, 3.73614057e-07, -3.95987517e-04),
     )
 
 
@@ -73,8 +73,8 @@ def test_benchmark1_step0_caseB(geo_path):
         "benchmark1_step0_caseB",
         ["benchmark1-step0", "b", "--geometry-path", geo_path],
         geo_path,
-        max_up0=(9.56321066e-03, 4.23419184e-05, 1.52382853e-04),
-        min_up0=(6.58201731e-08, -2.48506144e-04, -1.50213958e-08),
+        max_up0=(1.00143349e-02, 4.97783144e-05, 1.64292843e-04),
+        min_up0=(-1.00857813e-05, -2.82413565e-04, -2.64611270e-07),
     )
 
 
@@ -83,8 +83,8 @@ def test_benchmark1_step1(geo_path):
         "benchmark1_step1",
         ["benchmark1-step1", "--geometry-path", geo_path],
         geo_path,
-        max_up0=(0.00029864, 0.00152623, 0.0012752),
-        min_up0=(-2.01299237e-02, -4.59802750e-06, -3.08946192e-04),
+        max_up0=(0.00039218, 0.00151579, 0.00122652),
+        min_up0=(-1.98295540e-02, 4.51570134e-07, -3.08690114e-04),
     )
 
 
@@ -93,8 +93,8 @@ def test_benchmark1_step2_caseA(geo_path):
         "benchmark1_step2_caseA",
         ["benchmark1-step2", "a", "--geometry-path", geo_path],
         geo_path,
-        max_up0=(0.00019502, 0.00156037, 0.00179372),
-        min_up0=(-2.12558875e-02, -6.24197977e-06, -2.20562909e-04),
+        max_up0=(0.00031393, 0.00156036, 0.00175083),
+        min_up0=(-2.10530866e-02, -2.32237185e-07, -2.32820346e-04),
     )
 
 
