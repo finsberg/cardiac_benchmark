@@ -1,10 +1,4 @@
-import dolfin
-import numpy as np
-import ufl
 import weakref
-from dolfin import FiniteElement  # noqa: F401
-from dolfin import tetrahedron  # noqa: F401
-from dolfin import VectorElement  # noqa: F401
 from pathlib import Path
 from typing import Dict
 from typing import List
@@ -13,8 +7,14 @@ from typing import Optional
 from typing import Tuple
 from typing import Union
 
+import dolfin
 import h5py
 import matplotlib.pyplot as plt
+import numpy as np
+import ufl
+from dolfin import FiniteElement  # noqa: F401
+from dolfin import tetrahedron  # noqa: F401
+from dolfin import VectorElement  # noqa: F401
 
 from .geometry import BiVGeometry
 from .geometry import load_geometry
@@ -282,7 +282,7 @@ class DataLoader:
         self.v = dolfin.Function(V, name="velocity")
         self.a = dolfin.Function(V, name="acceleration")
 
-        self.stress_space = dolfin.FunctionSpace(self.geometry.mesh, "CG", 1)
+        self.stress_space = dolfin.FunctionSpace(self.geometry.mesh, "DG", 1)
         self._finalizer_h5file = weakref.finalize(self, close_h5file, self._h5file)
         self._finalizer_h5pyfile = weakref.finalize(
             self,
