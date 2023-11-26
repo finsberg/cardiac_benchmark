@@ -1,6 +1,11 @@
-import dolfin
 import typing
-import ufl
+
+import dolfin
+
+try:
+    import ufl_legacy as ufl
+except ImportError:
+    import ufl
 
 
 def heaviside(

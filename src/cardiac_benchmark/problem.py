@@ -9,9 +9,14 @@ For time integration we employ the generalized :math:`\alpha`-method [1]_.
         Springer Verlag, 2002, 28, pp.83-104, doi:10.1007/s00466-001-0273-z
 """
 import abc
-import dolfin
 import typing
-import ufl
+
+import dolfin
+
+try:
+    import ufl_legacy as ufl
+except ImportError:
+    import ufl
 
 from .geometry import HeartGeometry
 from .material import HolzapfelOgden
@@ -103,7 +108,6 @@ class Problem(abc.ABC):
         return ufl.inner(self.parameters["rho"] * a, w) * ufl.dx
 
     def _first_piola(self, F: ufl.Coefficient, v: dolfin.Function):
-
         F_dot = ufl.grad(v)
         l = F_dot * ufl.inv(F)  # Holzapfel eq: 2.139
         d = 0.5 * (l + l.T)  # Holzapfel 2.146
