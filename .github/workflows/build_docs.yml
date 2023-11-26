@@ -25,7 +25,7 @@ jobs:
 
   build:
     runs-on: ubuntu-22.04
-    container: ghcr.io/scientificcomputing/fenics-gmsh:2023-04-21
+    container: ghcr.io/scientificcomputing/fenics-gmsh:2023-11-15
     env:
       PUBLISH_DIR: ./_build/html
 

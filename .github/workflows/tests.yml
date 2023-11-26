@@ -15,7 +15,7 @@ jobs:
     name: Test
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/scientificcomputing/fenics-gmsh:jupterlab-2023-04-21
+      image: ghcr.io/scientificcomputing/fenics-gmsh:2023-11-15
 
     steps:
       - uses: actions/checkout@v3
