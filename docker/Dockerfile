@@ -1,4 +1,4 @@
-FROM ghcr.io/scientificcomputing/fenics-gmsh:2023-04-21
+FROM ghcr.io/scientificcomputing/fenics-gmsh:2023-11-15
 
 # We set the working directory to install docker dependencies
 WORKDIR /tmp/

@@ -1,6 +1,11 @@
 import dolfin
 import numpy as np
-import ufl
+
+try:
+    import ufl_legacy as ufl
+except ImportError:
+    import ufl
+
 from typing import Dict
 from typing import NamedTuple
 from typing import Tuple
