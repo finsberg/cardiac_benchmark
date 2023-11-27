@@ -1,10 +1,16 @@
-import dolfin
 import logging
-import numpy as np
 from pathlib import Path
 from typing import Dict
 from typing import Optional
 from typing import Union
+
+import dolfin
+import numpy as np
+
+try:
+    import ufl_legacy as ufl
+except ImportError:
+    import ufl
 
 from . import activation_model
 from . import postprocess
@@ -207,6 +213,28 @@ def run(
     problem_parameters["plv"] = plv
     problem_parameters["prv"] = prv
 
+    # import ldrb
+
+    # system = ldrb.dolfin_ldrb(
+    #     mesh=geo.mesh,
+    #     fiber_space="P_2",
+    #     ffun=geo.ffun,
+    #     markers=dict(
+    #         base=geo.markers["BASE"][0],
+    #         rv=geo.markers["ENDO_RV"][0],
+    #         lv=geo.markers["ENDO_LV"][0],
+    #         epi=geo.markers["EPI"][0],
+    #     ),
+    #     alpha_endo_lv=60,
+    #     alpha_epi_lv=-60,
+    # )
+    # geo.f0 = system.fiber
+    # geo.s0 = system.sheet
+    # geo.n0 = system.sheet_normal
+
+    geo.f0 = geo.f0 / ufl.sqrt(ufl.dot(geo.f0, geo.f0))
+    geo.s0 = geo.s0 / ufl.sqrt(ufl.dot(geo.s0, geo.s0))
+
     material = HolzapfelOgden(
         f0=geo.f0,
         s0=geo.s0,
@@ -218,7 +246,6 @@ def run(
         material=material,
         parameters=problem_parameters,
     )
-
     problem.solve()
 
     result_filepath = Path(outpath)

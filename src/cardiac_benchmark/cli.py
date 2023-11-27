@@ -45,7 +45,7 @@ def setup_logging(loglevel=logging.INFO):
         ),
     )
     dolfin.set_log_level(logging.WARNING)
-    for module in ["matplotlib", "h5py", "FFC", "UFL"]:
+    for module in ["matplotlib", "h5py", "FFC", "UFL", "UFL_LEGACY"]:
         logger = logging.getLogger(module)
         logger.setLevel(logging.WARNING)
 

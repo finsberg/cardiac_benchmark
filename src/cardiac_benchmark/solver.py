@@ -1,8 +1,9 @@
 """Copied from pulse"""
-import dolfin
 import logging
 import time
 from typing import Tuple
+
+import dolfin
 
 
 logger = logging.getLogger(__name__)
@@ -16,16 +17,43 @@ class NonlinearProblem(dolfin.NonlinearProblem):
         self._J = J
         self._F = F
         self.bcs = bcs
+        self._first_iteration = True
+        self._recompute_jacobian = True
+        self._prev_residual = 1.0
+        self._always_recompute_jac = kwargs.get("always_recompute_jac", True)
 
     def F(self, b: dolfin.PETScVector, x: dolfin.PETScVector):
+        logger.debug("Assemble F")
         dolfin.assemble(self._F, tensor=b)
+        logger.debug("Done assembling F")
         for bc in self.bcs:
             bc.apply(b, x)
 
+        residual = b.norm("l2")
+        residual_ratio = residual / self._prev_residual
+        self._recompute_jacobian = residual_ratio > 0.5
+        if not self._first_iteration:
+            logger.debug(
+                f"\nresidual: {residual:e} "
+                + f"\nprevious residual: {self._prev_residual:e} "
+                + f"\nratio: {residual_ratio:e}",
+            )
+        self._prev_residual = residual
+
     def J(self, A: dolfin.PETScMatrix, x: dolfin.PETScVector):
-        dolfin.assemble(self._J, tensor=A)
-        for bc in self.bcs:
-            bc.apply(A)
+        if (
+            self._always_recompute_jac
+            or self._first_iteration
+            or self._recompute_jacobian
+        ):
+            logger.debug("Assemble J")
+            dolfin.assemble(self._J, tensor=A)
+            logger.debug("Done assembling J")
+            logger.debug("Apply bc")
+            for bc in self.bcs:
+                bc.apply(A)
+            logger.debug("Done apply BC")
+            self._first_iteration = False
 
 
 class NonlinearSolver:
@@ -46,6 +74,7 @@ class NonlinearSolver:
         self._solver.parameters.update(self.parameters)
         self._snes = self._solver.snes()
         self._snes.setConvergenceHistory()
+        dolfin.PETScOptions.set("snes_monitor")
 
         logger.info(f"Linear Solver : {self._solver.parameters['linear_solver']}")
         logger.info(f"Preconditioner:  {self._solver.parameters['preconditioner']}")
@@ -91,7 +120,7 @@ class NonlinearSolver:
                 "pc_type": "lu",
                 "mat_mumps_icntl_33": 0,
             },
-            "verbose": False,
+            "verbose": True,
             "linear_solver": linear_solver,
             "preconditioner": "lu",
             "error_on_nonconvergence": False,
