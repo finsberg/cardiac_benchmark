@@ -18,15 +18,21 @@
 #SBATCH --job-name="cardiac-benchmark"
 #SBATCH --partition=milanq
 #SBATCH --time=3-00:00:00
-#SBATCH --nodes=1
 #SBATCH --ntasks=8
-#SBATCH --ntasks-per-node=8
 #SBATCH --output=slurm-output/%j-%x-stdout.txt
 #SBATCH --error=slurm-output/%j-%x-stderr.txt
 
 
-module use /cm/shared/ex3-modules/0.6.1/modulefiles
+# module use /cm/shared/ex3-modules/0.6.1/modulefiles
+# module load python-fenics-dolfin-2019.1.0.post0
+module use /global/D1/homes/james/ex3modules/milanq/202309a/modulefiles
 module load python-fenics-dolfin-2019.1.0.post0
+# module use /global/D1/homes/james/ex3modules/xeongold32q/202309a/modulefiles
+# module load python-fenics-dolfin-2019.1.0.post0
+
+export MKL_NUM_THREADS=$SLURM_NTASKS
+export OMP_NUM_THREADS=$SLURM_NTASKS
+# export OMPI_MCA_btl='^ofi'
 
 LIBRARY_ROOT=/home/henriknf/local/src/cardiac_benchmark
 
