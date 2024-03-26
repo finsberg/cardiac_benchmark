@@ -1,3 +1,5 @@
+[![DOI](https://zenodo.org/badge/432277001.svg)](https://zenodo.org/doi/10.5281/zenodo.10875817)
+
 # Cardiac benchmark
 
 This is the contribution to the cardiac mechanics benchmark from Simula Research Laboratory
@@ -158,6 +160,19 @@ which by default will run benchmark 1 - step 1.
 ## License
 
 MIT
+
+## Citing
+```
+@software{Finsberg_A_software_benchmark_2024,
+author = {Finsberg, Henrik and Sundnes, Joakim},
+doi = {10.5281/zenodo.10875818},
+month = mar,
+title = {{A software benchmark for cardiac elastodynamics}},
+url = {https://github.com/finsberg/cardiac_benchmark.},
+version = {1.0.0},
+year = {2024}
+}
+```
 
 ## Authors
 
