@@ -1,5 +1,4 @@
-[![DOI](https://zenodo.org/badge/432277001.svg)](https://zenodo.org/doi/10.5281/zenodo.10875817)
-
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.10875818.svg)](https://doi.org/10.5281/zenodo.10875818)
 # Cardiac benchmark
 
 This is the contribution to the cardiac mechanics benchmark from Simula Research Laboratory
@@ -47,6 +46,10 @@ pre-commit install
 
 
 ### Get the geometry
+
+> [!NOTE]
+> The scripts for downloading the data is no longer working since the url is broken. However all the data for the benchmark (including the results are found here: https://zenodo.org/records/14260459)
+
 Before running the benchmark you need to first get a geometry. For benchmark 1 you can either use the provided geometry or create your own. To create your own geometry you can do
 
 ```
