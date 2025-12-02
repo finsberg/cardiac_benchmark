@@ -39,7 +39,7 @@ dev = [
     "pre-commit",
 ]
 docs = [
-   "jupyter-book",
+   "jupyter-book<2.0",
    "ipython!=8.7.0"
 ]
 all = [
